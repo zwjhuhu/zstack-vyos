@@ -1,28 +1,29 @@
 package plugin
 
 import (
+	"fmt"
+	"strings"
 	"zvr/server"
 	"zvr/utils"
-	"fmt"
+
 	"github.com/pkg/errors"
-	"strings"
 )
 
 const (
-	VR_CONFIGURE_NIC = "/configurenic"
-	VR_CONFIGURE_NIC_FIREWALL_DEFAULT_ACTION_PATH = "/configurenicdefaultaction";
-	VR_REMOVE_NIC_PATH = "/removenic"
+	VR_CONFIGURE_NIC                              = "/configurenic"
+	VR_CONFIGURE_NIC_FIREWALL_DEFAULT_ACTION_PATH = "/configurenicdefaultaction"
+	VR_REMOVE_NIC_PATH                            = "/removenic"
 )
 
 type nicInfo struct {
-	Ip string `json:"ip"`
-	Netmask string `json:"netmask"`
-	Gateway string `json:"gateway"`
-	Mac string `json:"Mac"`
-	Category string `json:"category"`
-	L2Type string `json:"l2type"`
-	PhysicalInterface string `json:"physicalInterface"`
-	Vni int `json:"vni"`
+	Ip                    string `json:"ip"`
+	Netmask               string `json:"netmask"`
+	Gateway               string `json:"gateway"`
+	Mac                   string `json:"mac"`
+	Category              string `json:"category"`
+	L2Type                string `json:"l2type"`
+	PhysicalInterface     string `json:"physicalInterface"`
+	Vni                   int    `json:"vni"`
 	FirewallDefaultAction string `json:"firewallDefaultAction"`
 }
 
@@ -45,8 +46,10 @@ func configureNic(ctx *server.CommandContext) interface{} {
 			} else {
 				return nil
 			}
-		}, 5, 1); utils.PanicOnError(err)
-		cidr, err := utils.NetmaskToCIDR(nic.Netmask); utils.PanicOnError(err)
+		}, 5, 1)
+		utils.PanicOnError(err)
+		cidr, err := utils.NetmaskToCIDR(nic.Netmask)
+		utils.PanicOnError(err)
 		addr := fmt.Sprintf("%v/%v", nic.Ip, cidr)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s address %v", nicname, addr)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s duplex auto", nicname)
@@ -135,7 +138,7 @@ func checkNicIsUp(nicname string, panicIfDown bool) error {
 	var retryInterval uint = 1
 
 	bash := utils.Bash{
-		Command:fmt.Sprintf("ip link show dev %s up", nicname),
+		Command: fmt.Sprintf("ip link show dev %s up", nicname),
 	}
 	err := utils.Retry(func() error {
 		_, o, _, _ := bash.RunWithReturn()
@@ -145,7 +148,7 @@ func checkNicIsUp(nicname string, panicIfDown bool) error {
 			return nil
 		}
 	}, retryTimes, retryInterval)
-	error := errors.New(fmt.Sprintf("nic %s still down after %d secondes", nicname, retryTimes * retryInterval))
+	error := errors.New(fmt.Sprintf("nic %s still down after %d secondes", nicname, retryTimes*retryInterval))
 
 	if err != nil && panicIfDown == true {
 		utils.PanicOnError(error)
@@ -171,7 +174,8 @@ func removeNic(ctx *server.CommandContext) interface{} {
 			} else {
 				return nil
 			}
-		}, 5, 1); utils.PanicOnError(err)
+		}, 5, 1)
+		utils.PanicOnError(err)
 		tree.Deletef("interfaces ethernet %s", nicname)
 		if utils.IsSkipVyosIptables() {
 			utils.DestroyNicFirewall(nicname)
@@ -200,12 +204,13 @@ func configureNicFirewallDefaultAction(ctx *server.CommandContext) interface{} {
 			} else {
 				return nil
 			}
-		}, 5, 1); utils.PanicOnError(err)
+		}, 5, 1)
+		utils.PanicOnError(err)
 
 		if utils.IsSkipVyosIptables() {
 			utils.SetDefaultRule(nicname, nic.FirewallDefaultAction)
 		} else {
-			if (strings.Compare(nic.FirewallDefaultAction, "reject") == 0) {
+			if strings.Compare(nic.FirewallDefaultAction, "reject") == 0 {
 				tree.SetFirewallDefaultAction(nicname, "local", "reject")
 				tree.SetFirewallDefaultAction(nicname, "in", "reject")
 			} else {
@@ -234,7 +239,7 @@ func makeAlias(nic nicInfo) string {
 	return result
 }
 
-func ConfigureNicEntryPoint()  {
+func ConfigureNicEntryPoint() {
 	server.RegisterAsyncCommandHandler(VR_CONFIGURE_NIC, server.VyosLock(configureNic))
 	server.RegisterAsyncCommandHandler(VR_REMOVE_NIC_PATH, server.VyosLock(removeNic))
 	server.RegisterAsyncCommandHandler(VR_CONFIGURE_NIC_FIREWALL_DEFAULT_ACTION_PATH, server.VyosLock(configureNicFirewallDefaultAction))

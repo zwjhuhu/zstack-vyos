@@ -1,14 +1,15 @@
 package utils
 
 import (
-	"io/ioutil"
-	log "github.com/Sirupsen/logrus"
 	"encoding/json"
+	"io/ioutil"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
 	BOOTSTRAP_INFO_CACHE = "/home/vyos/zvr/bootstrap-info.json"
-	DEFAULT_SSH_PORT = 22
+	DEFAULT_SSH_PORT     = 22
 )
 
 var bootstrapInfo map[string]interface{} = make(map[string]interface{})
@@ -37,7 +38,8 @@ func IsSkipVyosIptables() bool {
 }
 
 func InitBootStrapInfo() {
-	content, err := ioutil.ReadFile(BOOTSTRAP_INFO_CACHE); PanicOnError(err)
+	content, err := ioutil.ReadFile(BOOTSTRAP_INFO_CACHE)
+	PanicOnError(err)
 	if len(content) == 0 {
 		log.Debugf("no content in %s, can not get mgmt gateway", BOOTSTRAP_INFO_CACHE)
 	}
@@ -45,4 +47,6 @@ func InitBootStrapInfo() {
 	if err := json.Unmarshal(content, &bootstrapInfo); err != nil {
 		log.Debugf("can not parse info from %s, can not get mgmt gateway", BOOTSTRAP_INFO_CACHE)
 	}
+
+	log.Debugf("SkipVyosIptables %t", bootstrapInfo["SkipVyosIptables"].(bool))
 }

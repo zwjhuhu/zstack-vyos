@@ -1,37 +1,38 @@
 package plugin
 
 import (
-	"zvr/server"
-	"html/template"
-	"zvr/utils"
 	"bytes"
-	"github.com/fatih/structs"
-	"strings"
-	"fmt"
-	"path/filepath"
-	"io/ioutil"
-	"strconv"
-	"os"
-	"regexp"
-	prom "github.com/prometheus/client_golang/prometheus"
-	haproxy "github.com/bcicen/go-haproxy"
-	"sort"
-	log "github.com/Sirupsen/logrus"
-	"net/http"
-	"time"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"html/template"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"time"
+	"zvr/server"
+	"zvr/utils"
+
+	log "github.com/Sirupsen/logrus"
+	haproxy "github.com/bcicen/go-haproxy"
+	"github.com/fatih/structs"
+	prom "github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	REFRESH_LB_PATH = "/lb/refresh"
-	DELETE_LB_PATH = "/lb/delete"
+	REFRESH_LB_PATH         = "/lb/refresh"
+	DELETE_LB_PATH          = "/lb/delete"
 	CREATE_CERTIFICATE_PATH = "/certificate/create"
 
-	LB_ROOT_DIR = "/home/vyos/zvr/lb/"
-	LB_CONF_DIR = "/home/vyos/zvr/lb/conf/"
+	LB_ROOT_DIR          = "/home/vyos/zvr/lb/"
+	LB_CONF_DIR          = "/home/vyos/zvr/lb/conf/"
 	CERTIFICATE_ROOT_DIR = "/home/vyos/zvr/certificate/"
-	LB_SOCKET_DIR = "/home/vyos/zvr/lb/sock/"
+	LB_SOCKET_DIR        = "/home/vyos/zvr/lb/sock/"
 
 	LB_MODE_HTTPS = "https"
 
@@ -40,59 +41,59 @@ const (
 	LISTENER_MAP_SIZE = 128
 	//reserve some sockets for haproxy if specify the parameter "ulimit-n"
 	RESERVE_SOCK_COUNT = 100
-	MAX_SOCK_COUNT = 1048576
+	MAX_SOCK_COUNT     = 1048576
 )
 
 type lbInfo struct {
-	LbUuid string `json:"lbUuid"`
-	ListenerUuid string `json:"listenerUuid"`
-	Vip string `json:"vip"`
-	NicIps []string `json:"nicIps"`
-	InstancePort int `json:"instancePort"`
-	LoadBalancerPort int `json:"loadBalancerPort"`
-	Mode string `json:"mode"`
-	Parameters []string `json:"parameters"`
-	CertificateUuid string `json:"certificateUuid"`
+	LbUuid           string   `json:"lbUuid"`
+	ListenerUuid     string   `json:"listenerUuid"`
+	Vip              string   `json:"vip"`
+	NicIps           []string `json:"nicIps"`
+	InstancePort     int      `json:"instancePort"`
+	LoadBalancerPort int      `json:"loadBalancerPort"`
+	Mode             string   `json:"mode"`
+	Parameters       []string `json:"parameters"`
+	CertificateUuid  string   `json:"certificateUuid"`
 }
 
 type certificateInfo struct {
-	Uuid string `json:"uuid"`
+	Uuid        string `json:"uuid"`
 	Certificate string `json:"certificate"`
 }
 
 type Listener interface {
-	createListenerServiceConfigure(lb lbInfo)  ( err error)
-	checkIfListenerServiceUpdate(origChecksum string, currChecksum string) ( bool, error)
-	preActionListenerServiceStart() ( err error)
-	rollbackPreActionListenerServiceStart() ( err error)
+	createListenerServiceConfigure(lb lbInfo) (err error)
+	checkIfListenerServiceUpdate(origChecksum string, currChecksum string) (bool, error)
+	preActionListenerServiceStart() (err error)
+	rollbackPreActionListenerServiceStart() (err error)
 	startListenerService() (ret int, err error)
-	postActionListenerServiceStart() ( err error)
-	stopListenerService() ( err error)
+	postActionListenerServiceStart() (err error)
+	stopListenerService() (err error)
 	postActionListenerServiceStop() (ret int, err error)
-        getLbCounters(listenerUuid string) ([]*LbCounter, int)
-	getIptablesRule()([]utils.IptablesRule, string)
+	getLbCounters(listenerUuid string) ([]*LbCounter, int)
+	getIptablesRule() ([]utils.IptablesRule, string)
 }
 
 // the listener implemented with HaProxy
 type HaproxyListener struct {
-	lb lbInfo
-	confPath string
-	pidPath	string
-	sockPath string
+	lb          lbInfo
+	confPath    string
+	pidPath     string
+	sockPath    string
 	firewallDes string
-	maxConnect string
-	maxSession int   //same to maxConnect
+	maxConnect  string
+	maxSession  int //same to maxConnect
 }
 
 // the listener implemented with gobetween
 type GBListener struct {
-	lb lbInfo
-	confPath string
-	pidPath	string
+	lb          lbInfo
+	confPath    string
+	pidPath     string
 	firewallDes string
-	apiPort string // restapi binding port range from 50000-60000
-	maxConnect string
-	maxSession int   //same to maxConnect
+	apiPort     string // restapi binding port range from 50000-60000
+	maxConnect  string
+	maxSession  int //same to maxConnect
 }
 
 func getGBApiPort(confPath string, pidPath string) (port string) {
@@ -103,7 +104,7 @@ func getGBApiPort(confPath string, pidPath string) (port string) {
 	if ret, out, _, err := bash.RunWithReturn(); ret != 0 || err != nil {
 		bash.PanicIfError()
 	} else {
-		port =""
+		port = ""
 		pid, _ := utils.FindFirstPIDByPSExtern(true, confPath)
 		if pid > 0 {
 			//get current port used
@@ -111,9 +112,9 @@ func getGBApiPort(confPath string, pidPath string) (port string) {
 			for start := 50000; start < 60000; start++ {
 				port = strconv.Itoa(start)
 				//find the record ":port * pid/gobetween"
-				if strings.Contains(out, ":" + port) {
+				if strings.Contains(out, ":"+port) {
 					for _, str := range kv {
-						if strings.Contains(str, ":" + port) && strings.Contains(str, strconv.Itoa(pid) + "/gobetween") {
+						if strings.Contains(str, ":"+port) && strings.Contains(str, strconv.Itoa(pid)+"/gobetween") {
 							//log.Debugf("lb %s pid: %v api port: %v ", confPath, pid, port)
 							return port
 						}
@@ -125,7 +126,7 @@ func getGBApiPort(confPath string, pidPath string) (port string) {
 		}
 
 		for start := 50000; start < 60000; start++ {
-			if !strings.Contains(out, ":" + strconv.Itoa(start)) {
+			if !strings.Contains(out, ":"+strconv.Itoa(start)) {
 				port = strconv.Itoa(start)
 				log.Debugf("lb %s pid: %v api port: %v ", confPath, pid, port)
 				break
@@ -150,9 +151,9 @@ func getListener(lb lbInfo) Listener {
 			log.Errorf("there is no free port for rest api for listener: %v \n", lb.ListenerUuid)
 			return nil
 		}
-		return &GBListener{lb:lb, confPath: confPath, pidPath:pidPath, firewallDes:des, apiPort:port}
+		return &GBListener{lb: lb, confPath: confPath, pidPath: pidPath, firewallDes: des, apiPort: port}
 	case "tcp", "https", "http":
-		return &HaproxyListener{lb:lb, confPath: confPath, pidPath:pidPath, firewallDes:des, sockPath:sockPath}
+		return &HaproxyListener{lb: lb, confPath: confPath, pidPath: pidPath, firewallDes: des, sockPath: sockPath}
 	default:
 		utils.PanicOnError(fmt.Errorf("No such listener %v", lb.Mode))
 	}
@@ -184,8 +185,9 @@ func parseListenerPrameter(lb lbInfo) (map[string]interface{}, error) {
 	return m, nil
 }
 
-func getListenerMaxCocurrenceSocket(maxConnect string) (string) {
-	maxSocket, err := strconv.Atoi(maxConnect); utils.PanicOnError(err)
+func getListenerMaxCocurrenceSocket(maxConnect string) string {
+	maxSocket, err := strconv.Atoi(maxConnect)
+	utils.PanicOnError(err)
 	maxSocket = maxSocket*2 + RESERVE_SOCK_COUNT
 
 	if maxSocket > MAX_SOCK_COUNT {
@@ -195,7 +197,7 @@ func getListenerMaxCocurrenceSocket(maxConnect string) (string) {
 	return strconv.Itoa(maxSocket)
 }
 
-func (this *HaproxyListener) createListenerServiceConfigure(lb lbInfo)  (err error) {
+func (this *HaproxyListener) createListenerServiceConfigure(lb lbInfo) (err error) {
 	conf := `global
 maxconn {{.MaxConnection}}
 log 127.0.0.1 local1
@@ -236,51 +238,58 @@ server nic-{{$ip}} {{$ip}}:{{$.InstancePort}} check port {{$.CheckPort}} inter {
 	var buf bytes.Buffer
 	var m map[string]interface{}
 
-	tmpl, err := template.New("conf").Parse(conf); utils.PanicOnError(err)
-	m, err = parseListenerPrameter(lb);utils.PanicOnError(err)
+	tmpl, err := template.New("conf").Parse(conf)
+	utils.PanicOnError(err)
+	m, err = parseListenerPrameter(lb)
+	utils.PanicOnError(err)
 	this.maxConnect = m["MaxConnection"].(string)
 	this.maxSession, _ = strconv.Atoi(this.maxConnect)
 
 	m["ulimit"] = getListenerMaxCocurrenceSocket(this.maxConnect)
 
-	err = tmpl.Execute(&buf, m); utils.PanicOnError(err)
+	err = tmpl.Execute(&buf, m)
+	utils.PanicOnError(err)
 
-	err = utils.MkdirForFile(this.pidPath, 0755); utils.PanicOnError(err)
-	err = utils.MkdirForFile(this.confPath, 0755); utils.PanicOnError(err)
-	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755); utils.PanicOnError(err)
+	err = utils.MkdirForFile(this.pidPath, 0755)
+	utils.PanicOnError(err)
+	err = utils.MkdirForFile(this.confPath, 0755)
+	utils.PanicOnError(err)
+	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755)
+	utils.PanicOnError(err)
 	LbListeners[this.lb.ListenerUuid] = this
 	return err
 }
 
-func (this *HaproxyListener) startListenerService() ( ret int, err error) {
+func (this *HaproxyListener) startListenerService() (ret int, err error) {
 	bash := utils.Bash{
 		Command: fmt.Sprintf("sudo /opt/vyatta/sbin/haproxy -D -N %s -f %s -p %s -sf $(cat %s)",
 			this.maxConnect, this.confPath, this.pidPath, this.pidPath),
 	}
 
-	ret, _, _, err = bash.RunWithReturn(); bash.PanicIfError()
+	ret, _, _, err = bash.RunWithReturn()
+	bash.PanicIfError()
 	return ret, err
 }
 
-
-func (this *HaproxyListener) checkIfListenerServiceUpdate(origChecksum string, currChecksum string) ( bool, error) {
-	pid, err := utils.FindFirstPIDByPS( this.confPath, this.pidPath)
+func (this *HaproxyListener) checkIfListenerServiceUpdate(origChecksum string, currChecksum string) (bool, error) {
+	pid, err := utils.FindFirstPIDByPS(this.confPath, this.pidPath)
 	if pid > 0 {
 		//log.Debugf("lb %s pid: %v orig: %v curr: %v", this.confPath, pid, origChecksum, currChecksum)
 		return strings.EqualFold(origChecksum, currChecksum) == false, nil
-	} else if (pid == -1) {
+	} else if pid == -1 {
 		err = nil
 	}
 	return true, err
 }
 
-func (this *HaproxyListener) preActionListenerServiceStart() ( err error) {
+func (this *HaproxyListener) preActionListenerServiceStart() (err error) {
 	if utils.IsSkipVyosIptables() {
 		return
 	}
 
 	// drop SYN packets to make clients to resend, this is for restarting LB without losing packets
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip ); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	tree := server.NewParserFromShowConfiguration().Tree
 	dropRuleDes := fmt.Sprintf("lb-%v-%s-drop", this.lb.LbUuid, this.lb.ListenerUuid)
 	if r := tree.FindFirewallRuleByDescription(nicname, "local", dropRuleDes); r == nil {
@@ -299,17 +308,18 @@ func (this *HaproxyListener) preActionListenerServiceStart() ( err error) {
 	return nil
 }
 
-func deleteHaproxySynRuleByIptables(nic string, lb lbInfo)  {
-	utils.DeleteFirewallRuleByComment(nic, utils.LbRuleComment + lb.ListenerUuid + "-SYN")
+func deleteHaproxySynRuleByIptables(nic string, lb lbInfo) {
+	utils.DeleteFirewallRuleByComment(nic, utils.LbRuleComment+lb.ListenerUuid+"-SYN")
 }
 
-func (this *HaproxyListener) rollbackPreActionListenerServiceStart() ( err error) {
+func (this *HaproxyListener) rollbackPreActionListenerServiceStart() (err error) {
 	if utils.IsSkipVyosIptables() {
 		return nil
 	}
 
 	// drop SYN packets to make clients to resend, this is for restarting LB without losing packets
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip ); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	dropRuleDes := fmt.Sprintf("lb-%v-%s-drop", this.lb.LbUuid, this.lb.ListenerUuid)
@@ -320,12 +330,13 @@ func (this *HaproxyListener) rollbackPreActionListenerServiceStart() ( err error
 	return nil
 }
 
-func (this *HaproxyListener) postActionListenerServiceStart() ( err error) {
+func (this *HaproxyListener) postActionListenerServiceStart() (err error) {
 	if utils.IsSkipVyosIptables() {
 		return nil
 	}
 
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip ); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	if r := tree.FindFirewallRuleByDescription(nicname, "local", this.firewallDes); r == nil {
@@ -349,13 +360,14 @@ func (this *HaproxyListener) postActionListenerServiceStart() ( err error) {
 	return nil
 }
 
-func (this *HaproxyListener) stopListenerService() ( err error) {
+func (this *HaproxyListener) stopListenerService() (err error) {
 	//miao zhanyong the udp lb configured by gobetween, there is no pid configure in the shell cmd line
 	pid, err := utils.FindFirstPIDByPS(this.confPath, this.pidPath)
 	//log.Debugf("lb %s pid: %v result:%v", this.confPath, pid, err)
 	if pid > 0 {
-		err = utils.KillProcess(pid); utils.PanicOnError(err)
-	} else if (pid == -1) {
+		err = utils.KillProcess(pid)
+		utils.PanicOnError(err)
+	} else if pid == -1 {
 		err = nil
 	}
 	utils.CleanConnTrackConnection(this.lb.Vip, "tcp", this.lb.LoadBalancerPort)
@@ -365,8 +377,9 @@ func (this *HaproxyListener) stopListenerService() ( err error) {
 func (this *HaproxyListener) postActionListenerServiceStop() (ret int, err error) {
 	delete(LbListeners, this.lb.ListenerUuid)
 
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip); utils.PanicOnError(err)
-	if ! utils.IsSkipVyosIptables() {
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
+	if !utils.IsSkipVyosIptables() {
 		tree := server.NewParserFromShowConfiguration().Tree
 		if r := tree.FindFirewallRuleByDescription(nicname, "local", this.firewallDes); r != nil {
 			r.Delete()
@@ -375,27 +388,30 @@ func (this *HaproxyListener) postActionListenerServiceStop() (ret int, err error
 	}
 
 	if e, _ := utils.PathExists(this.pidPath); e {
-		err = os.Remove(this.pidPath); utils.LogError(err)
+		err = os.Remove(this.pidPath)
+		utils.LogError(err)
 	}
 	if e, _ := utils.PathExists(this.confPath); e {
-		err = os.Remove(this.confPath); utils.LogError(err)
+		err = os.Remove(this.confPath)
+		utils.LogError(err)
 	}
 	if e, _ := utils.PathExists(this.sockPath); e {
-		err = os.Remove(this.sockPath); utils.LogError(err)
+		err = os.Remove(this.sockPath)
+		utils.LogError(err)
 	}
 
 	return 0, err
 }
 
-func (this *HaproxyListener) getIptablesRule()([]utils.IptablesRule, string) {
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip); utils.PanicOnError(err)
+func (this *HaproxyListener) getIptablesRule() ([]utils.IptablesRule, string) {
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	return []utils.IptablesRule{utils.NewLoadBalancerIptablesRule(utils.TCP, this.lb.Vip, this.lb.LoadBalancerPort,
-		utils.RETURN, utils.LbRuleComment + this.lb.ListenerUuid, nil)}, nicname
+		utils.RETURN, utils.LbRuleComment+this.lb.ListenerUuid, nil)}, nicname
 }
 
-
-func (this *GBListener) createListenerServiceConfigure(lb lbInfo)  (err error) {
-		conf := `[api]
+func (this *GBListener) createListenerServiceConfigure(lb lbInfo) (err error) {
+	conf := `[api]
 enabled = true  # true | false
 bind = ":{{.ApiPort}}"  # bind host:port
 [logging]
@@ -443,28 +459,35 @@ max_responses = 0    # (required) if > 0 accepts no more responses that max_resp
 	var buf bytes.Buffer
 	var m map[string]interface{}
 
-	tmpl, err := template.New("conf").Parse(conf); utils.PanicOnError(err)
-	m, err = parseListenerPrameter(lb);utils.PanicOnError(err)
+	tmpl, err := template.New("conf").Parse(conf)
+	utils.PanicOnError(err)
+	m, err = parseListenerPrameter(lb)
+	utils.PanicOnError(err)
 	m["ApiPort"] = this.apiPort
 	//m["ulimit"] = getListenerMaxCocurrenceSocket(m["MaxConnection"].(string))
 	this.maxConnect = m["MaxConnection"].(string)
 	this.maxSession, _ = strconv.Atoi(this.maxConnect)
 
-	err = tmpl.Execute(&buf, m); utils.PanicOnError(err)
-	err = utils.MkdirForFile(this.pidPath, 0755); utils.PanicOnError(err)
-	err = utils.MkdirForFile(this.confPath, 0755); utils.PanicOnError(err)
-	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755); utils.PanicOnError(err)
+	err = tmpl.Execute(&buf, m)
+	utils.PanicOnError(err)
+	err = utils.MkdirForFile(this.pidPath, 0755)
+	utils.PanicOnError(err)
+	err = utils.MkdirForFile(this.confPath, 0755)
+	utils.PanicOnError(err)
+	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755)
+	utils.PanicOnError(err)
 	LbListeners[this.lb.ListenerUuid] = this
 	return err
 }
 
-func (this *GBListener) startListenerService() ( ret int, err error) {
+func (this *GBListener) startListenerService() (ret int, err error) {
 	bash := utils.Bash{
 		Command: fmt.Sprintf("sudo /opt/vyatta/sbin/gobetween -c %s >/dev/null 2>&1&echo $! >%s",
 			this.confPath, this.pidPath),
 	}
 
-	ret, _, _, err = bash.RunWithReturn(); bash.PanicIfError()
+	ret, _, _, err = bash.RunWithReturn()
+	bash.PanicIfError()
 	return ret, err
 }
 
@@ -476,7 +499,8 @@ func getFileChecksum(file string) (checksum string, err error) {
 		bash := utils.Bash{
 			Command: fmt.Sprintf("md5sum %s |awk '{print $1}'", file),
 		}
-		ret, out, _, err := bash.RunWithReturn();bash.PanicIfError()
+		ret, out, _, err := bash.RunWithReturn()
+		bash.PanicIfError()
 		if ret != 0 || err != nil {
 			return "", err
 		}
@@ -486,12 +510,13 @@ func getFileChecksum(file string) (checksum string, err error) {
 	return checksum, nil
 }
 
-func (this *GBListener) checkIfListenerServiceUpdate(origChecksum string, currChecksum string) ( bool, error) {
-	pid, _:= utils.FindFirstPIDByPS( this.confPath)
+func (this *GBListener) checkIfListenerServiceUpdate(origChecksum string, currChecksum string) (bool, error) {
+	pid, _ := utils.FindFirstPIDByPS(this.confPath)
 	if pid > 0 {
 		log.Debugf("lb %s pid: %v orig: %v curr: %v", this.confPath, pid, origChecksum, currChecksum)
 		if strings.EqualFold(origChecksum, currChecksum) == false {
-			err := utils.KillProcess(pid); utils.PanicOnError(err)
+			err := utils.KillProcess(pid)
+			utils.PanicOnError(err)
 			return true, err
 		}
 		return false, nil
@@ -499,30 +524,31 @@ func (this *GBListener) checkIfListenerServiceUpdate(origChecksum string, currCh
 	return true, nil
 }
 
-func (this *GBListener) preActionListenerServiceStart() ( err error) {
+func (this *GBListener) preActionListenerServiceStart() (err error) {
 	return nil
 }
-func (this *GBListener) rollbackPreActionListenerServiceStart() ( err error) {
+func (this *GBListener) rollbackPreActionListenerServiceStart() (err error) {
 	return nil
 }
 
-func (this *GBListener) setGBListenerRuleByIptables(nic string)  {
+func (this *GBListener) setGBListenerRuleByIptables(nic string) {
 	dport, _ := strconv.Atoi(this.apiPort)
 	rule := utils.NewLoadBalancerIptablesRule(utils.TCP, "", dport,
-		utils.ACCEPT, utils.LbRuleComment + this.lb.ListenerUuid, nil)
+		utils.ACCEPT, utils.LbRuleComment+this.lb.ListenerUuid, nil)
 	utils.InsertFireWallRule(nic, rule, utils.LOCAL)
 
 	rule = utils.NewLoadBalancerIptablesRule(utils.UDP, this.lb.Vip, this.lb.LoadBalancerPort,
-		utils.ACCEPT, utils.LbRuleComment + this.lb.ListenerUuid, nil)
+		utils.ACCEPT, utils.LbRuleComment+this.lb.ListenerUuid, nil)
 	utils.InsertFireWallRule(nic, rule, utils.LOCAL)
 }
 
-func (this *GBListener) postActionListenerServiceStart() ( err error) {
+func (this *GBListener) postActionListenerServiceStart() (err error) {
 	if utils.IsSkipVyosIptables() {
 		return nil
 	}
 
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip ); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	if r := tree.FindFirewallRuleByDescription(nicname, "local", this.firewallDes); r == nil {
@@ -550,23 +576,25 @@ func (this *GBListener) postActionListenerServiceStart() ( err error) {
 	return nil
 }
 
-func (this *GBListener) getIptablesRule()([]utils.IptablesRule, string) {
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip); utils.PanicOnError(err)
+func (this *GBListener) getIptablesRule() ([]utils.IptablesRule, string) {
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	dport, _ := strconv.Atoi(this.apiPort)
-	return []utils.IptablesRule {
-		utils.NewLoadBalancerIptablesRule(utils.TCP, "", dport, utils.ACCEPT, utils.LbRuleComment + this.lb.ListenerUuid, nil),
-		utils.NewLoadBalancerIptablesRule(utils.UDP, this.lb.Vip, this.lb.LoadBalancerPort, utils.ACCEPT, utils.LbRuleComment + this.lb.ListenerUuid, nil)},
+	return []utils.IptablesRule{
+			utils.NewLoadBalancerIptablesRule(utils.TCP, "", dport, utils.ACCEPT, utils.LbRuleComment+this.lb.ListenerUuid, nil),
+			utils.NewLoadBalancerIptablesRule(utils.UDP, this.lb.Vip, this.lb.LoadBalancerPort, utils.ACCEPT, utils.LbRuleComment+this.lb.ListenerUuid, nil)},
 		nicname
 }
 
-func (this *GBListener) stopListenerService() ( err error) {
+func (this *GBListener) stopListenerService() (err error) {
 	//miao zhanyong the udp lb configured by gobetween, there is no pid configure in the shell cmd line
 	pid, err := utils.FindFirstPIDByPS(this.confPath)
 	//log.Debugf("lb %s pid: %v result:%v", this.confPath, pid, err)
 	err = nil
 	if pid > 0 {
-		err = utils.KillProcess(pid); utils.PanicOnError(err)
-	} else if (pid == -1) {
+		err = utils.KillProcess(pid)
+		utils.PanicOnError(err)
+	} else if pid == -1 {
 		err = nil
 	}
 
@@ -576,7 +604,8 @@ func (this *GBListener) stopListenerService() ( err error) {
 func (this *GBListener) postActionListenerServiceStop() (ret int, err error) {
 	delete(LbListeners, this.lb.ListenerUuid)
 
-	nicname, err := utils.GetNicNameByIp(this.lb.Vip); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByIp(this.lb.Vip)
+	utils.PanicOnError(err)
 	if !utils.IsSkipVyosIptables() {
 		tree := server.NewParserFromShowConfiguration().Tree
 		r := tree.FindFirewallRuleByDescription(nicname, "local", this.firewallDes)
@@ -588,15 +617,16 @@ func (this *GBListener) postActionListenerServiceStop() (ret int, err error) {
 	}
 
 	if e, _ := utils.PathExists(this.pidPath); e {
-		err = os.Remove(this.pidPath); utils.LogError(err)
+		err = os.Remove(this.pidPath)
+		utils.LogError(err)
 	}
 	if e, _ := utils.PathExists(this.confPath); e {
-		err = os.Remove(this.confPath); utils.LogError(err)
+		err = os.Remove(this.confPath)
+		utils.LogError(err)
 	}
-	
+
 	return 0, err
 }
-
 
 func makeLbPidFilePath(lb lbInfo) string {
 	return filepath.Join(LB_ROOT_DIR, "pid", fmt.Sprintf("lb-%s-listener-%s.pid", lb.LbUuid, lb.ListenerUuid))
@@ -628,7 +658,7 @@ func makeLbFirewallRuleDescription(lb lbInfo) string {
 
 func setLb(lb lbInfo) {
 	listener := getListener(lb)
-	if  listener == nil {
+	if listener == nil {
 		return
 	}
 
@@ -638,15 +668,18 @@ func setLb(lb lbInfo) {
 		return
 	}
 
-	err = listener.createListenerServiceConfigure(lb); utils.PanicOnError(err)
-	newChecksum, err1 := getFileChecksum(makeLbConfFilePath(lb)); utils.PanicOnError(err1)
+	err = listener.createListenerServiceConfigure(lb)
+	utils.PanicOnError(err)
+	newChecksum, err1 := getFileChecksum(makeLbConfFilePath(lb))
+	utils.PanicOnError(err1)
 	if update, err := listener.checkIfListenerServiceUpdate(checksum, newChecksum); err == nil && !update {
 		//log.Debugf("no need refresh the listener: %v\n", lb.ListenerUuid)
 		return
 	}
 	utils.PanicOnError(err)
 
-	err = listener.preActionListenerServiceStart(); utils.PanicOnError(err)
+	err = listener.preActionListenerServiceStart()
+	utils.PanicOnError(err)
 	//time.Sleep(time.Duration(1) * time.Second)
 	if ret, err := listener.startListenerService(); ret != 0 || err != nil {
 		log.Errorf("start listener fail %v \n", lb.ListenerUuid)
@@ -655,7 +688,7 @@ func setLb(lb lbInfo) {
 	}
 
 	if err := listener.postActionListenerServiceStart(); err != nil {
-		utils.PanicOnError(err);
+		utils.PanicOnError(err)
 	}
 }
 
@@ -678,18 +711,19 @@ func isCertificateUsed(certificateFile string) bool {
 
 	if ret, res, _, err := bash.RunWithReturn(); ret != 0 || err != nil {
 		return false
-	} else if res == ""{
+	} else if res == "" {
 		return false
 	} else {
 		return true
 	}
 }
 
-func removeUnusedCertificate()  {
+func removeUnusedCertificate() {
 	files := getCertificateList()
 	for _, file := range files {
 		if file != "" && !isCertificateUsed(file) {
-			err := os.Remove(file); utils.LogError(err)
+			err := os.Remove(file)
+			utils.LogError(err)
 		}
 	}
 }
@@ -701,7 +735,7 @@ func refreshLb(ctx *server.CommandContext) interface{} {
 	for _, lb := range cmd.Lbs {
 		if len(lb.NicIps) == 0 {
 			delLb(lb)
-		} else if (lb.Mode == LB_MODE_HTTPS && lb.CertificateUuid == "") {
+		} else if lb.Mode == LB_MODE_HTTPS && lb.CertificateUuid == "" {
 			delLb(lb)
 		} else {
 			setLb(lb)
@@ -728,7 +762,8 @@ func refreshLb(ctx *server.CommandContext) interface{} {
 			filterRules[nicname] = append(filterRules[nicname], rules...)
 		}
 
-		err := utils.SyncFirewallRule(filterRules, utils.LbRuleComment, utils.LOCAL); utils.PanicOnError(err)
+		err := utils.SyncFirewallRule(filterRules, utils.LbRuleComment, utils.LOCAL)
+		utils.PanicOnError(err)
 	}
 
 	removeUnusedCertificate()
@@ -738,12 +773,14 @@ func refreshLb(ctx *server.CommandContext) interface{} {
 
 func delLb(lb lbInfo) {
 	listener := getListener(lb)
-	if  listener == nil {
+	if listener == nil {
 		return
 	}
 
-	err := listener.stopListenerService(); utils.PanicOnError(err)
-	_, err = listener.postActionListenerServiceStop(); utils.PanicOnError(err)
+	err := listener.stopListenerService()
+	utils.PanicOnError(err)
+	_, err = listener.postActionListenerServiceStop()
+	utils.PanicOnError(err)
 }
 
 func deleteLb(ctx *server.CommandContext) interface{} {
@@ -771,8 +808,10 @@ func createCertificate(ctx *server.CommandContext) interface{} {
 		return nil
 	}
 
-	err := utils.MkdirForFile(certificatePath, 0755); utils.PanicOnError(err)
-	err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0755); utils.PanicOnError(err)
+	err := utils.MkdirForFile(certificatePath, 0755)
+	utils.PanicOnError(err)
+	err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0755)
+	utils.PanicOnError(err)
 
 	return nil
 }
@@ -780,22 +819,22 @@ func createCertificate(ctx *server.CommandContext) interface{} {
 func init() {
 	os.Mkdir(LB_ROOT_DIR, os.ModePerm)
 	os.Mkdir(LB_CONF_DIR, os.ModePerm)
-	os.Mkdir(LB_SOCKET_DIR, os.ModePerm | os.ModeSocket)
+	os.Mkdir(LB_SOCKET_DIR, os.ModePerm|os.ModeSocket)
 	LbListeners = make(map[string]interface{}, LISTENER_MAP_SIZE)
 	enableLbLog()
 	RegisterPrometheusCollector(NewLbPrometheusCollector())
 }
 
 type loadBalancerCollector struct {
-	statusEntry *prom.Desc
-	inByteEntry *prom.Desc
-	outByteEntry *prom.Desc
-	curSessionNumEntry *prom.Desc
+	statusEntry          *prom.Desc
+	inByteEntry          *prom.Desc
+	outByteEntry         *prom.Desc
+	curSessionNumEntry   *prom.Desc
 	curSessionUsageEntry *prom.Desc
 }
 
 const (
-	LB_LISTENER_UUID = "ListenerUuid"
+	LB_LISTENER_UUID       = "ListenerUuid"
 	LB_LISTENER_BACKEND_IP = "NicIpAddress"
 )
 
@@ -880,32 +919,32 @@ func (c *loadBalancerCollector) Update(ch chan<- prom.Metric) error {
 			ch <- prom.MustNewConstMetric(c.curSessionNumEntry, prom.GaugeValue, float64(cnt.sessionNumber), cnt.listenerUuid, cnt.ip)
 		}
 
-		ch <- prom.MustNewConstMetric(c.curSessionUsageEntry, prom.GaugeValue, float64(sessionNum * 100 /maxSessionNum), listenerUuid)
+		ch <- prom.MustNewConstMetric(c.curSessionUsageEntry, prom.GaugeValue, float64(sessionNum*100/maxSessionNum), listenerUuid)
 	}
 
 	return nil
 }
 
 type LbCounter struct {
-	listenerUuid    string
-	ip              string
-	status          uint64
-	bytesIn         uint64
-	bytesOut        uint64
-	sessionNumber   uint64
+	listenerUuid  string
+	ip            string
+	status        uint64
+	bytesIn       uint64
+	bytesOut      uint64
+	sessionNumber uint64
 }
 
-func getIpFromLbStat(name string)  string {
+func getIpFromLbStat(name string) string {
 	res := strings.Split(name, "-")
 	return res[1]
 }
 
-func statusFormat(status string) int  {
+func statusFormat(status string) int {
 	switch status {
 	case "UP":
 		return 1
 	/*case "DOWN":
-		return 0*/
+	return 0*/
 	default:
 		return 0
 	}
@@ -916,18 +955,18 @@ func (this *HaproxyListener) getLbCounters(listenerUuid string) ([]*LbCounter, i
 	num := 0
 
 	client := &haproxy.HAProxyClient{
-		Addr: "unix://" + this.sockPath,
+		Addr:    "unix://" + this.sockPath,
 		Timeout: 5,
 	}
 
 	stats, err := client.Stats()
-	if (err != nil) {
+	if err != nil {
 		log.Infof("client.Stats failed %v", err)
 		return nil, 0
 	}
 
 	for _, stat := range stats {
-		if m, err := regexp.MatchString(LB_BACKEND_PREFIX_REG, stat.SvName); err != nil || !m  {
+		if m, err := regexp.MatchString(LB_BACKEND_PREFIX_REG, stat.SvName); err != nil || !m {
 			continue
 		}
 
@@ -945,16 +984,15 @@ func (this *HaproxyListener) getLbCounters(listenerUuid string) ([]*LbCounter, i
 	return counters, num
 }
 
-
 type GoBetweenServerBackendStat struct {
-	Live bool `json:"live"`
+	Live               bool   `json:"live"`
 	Active_connections uint64 `json:"active_connections"`
-	Rx uint64 `json:"rx"`
-	Tx uint64 `json:"tx"`
+	Rx                 uint64 `json:"rx"`
+	Tx                 uint64 `json:"tx"`
 }
 
 type GoBetweenServerBackend struct {
-	Host string `json:"host"`
+	Host  string                     `json:"host"`
 	Stats GoBetweenServerBackendStat `json:"stats"`
 }
 
@@ -968,7 +1006,7 @@ var goBetweenClient = &http.Client{
 	Timeout: time.Second * 5,
 }
 
-func getGoBetweenStat(port string, server string )  (*GoBetweenServerStat, error){
+func getGoBetweenStat(port string, server string) (*GoBetweenServerStat, error) {
 	resp, err := goBetweenClient.Get(fmt.Sprintf("http://127.0.0.1:%s/servers/%s/stats", port, server))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("get goBetween stats failed because %v", err))
@@ -1000,7 +1038,7 @@ func (this *GBListener) getLbCounters(listenerUuid string) ([]*LbCounter, int) {
 		counter := LbCounter{}
 		counter.listenerUuid = listenerUuid
 		counter.ip = stat.Host
-		if (stat.Stats.Live) {
+		if stat.Stats.Live {
 			counter.status = 1
 		} else {
 			counter.status = 0
@@ -1016,13 +1054,16 @@ func (this *GBListener) getLbCounters(listenerUuid string) ([]*LbCounter, int) {
 }
 
 func enableLbLog() {
-	lb_log_file, err := ioutil.TempFile(LB_CONF_DIR, "rsyslog"); utils.PanicOnError(err)
+	lb_log_file, err := ioutil.TempFile(LB_CONF_DIR, "rsyslog")
+	utils.PanicOnError(err)
 	conf := `$ModLoad imudp
 $UDPServerRun 514
 local1.*     /var/log/haproxy.log`
-	_, err = lb_log_file.Write([]byte(conf)); utils.PanicOnError(err)
+	_, err = lb_log_file.Write([]byte(conf))
+	utils.PanicOnError(err)
 
-	lb_log_rotatoe_file, err := ioutil.TempFile(LB_CONF_DIR, "rotation"); utils.PanicOnError(err)
+	lb_log_rotatoe_file, err := ioutil.TempFile(LB_CONF_DIR, "rotation")
+	utils.PanicOnError(err)
 	rotate_conf := `/var/log/haproxy.log {
 size 10240k
 rotate 20
@@ -1039,13 +1080,15 @@ copytruncate
 notifempty
 missingok
 }`
-	_, err = lb_log_rotatoe_file.Write([]byte(rotate_conf)); utils.PanicOnError(err)
+	_, err = lb_log_rotatoe_file.Write([]byte(rotate_conf))
+	utils.PanicOnError(err)
 
 	bash := utils.Bash{
 		Command: fmt.Sprintf("sudo mv %s /etc/rsyslog.d/haproxy.conf && sudo mv %s /etc/logrotate.d/haproxy && sudo /etc/init.d/rsyslog restart",
 			lb_log_file.Name(), lb_log_rotatoe_file.Name()),
 	}
-	err = bash.Run();utils.PanicOnError(err)
+	err = bash.Run()
+	utils.PanicOnError(err)
 
 }
 

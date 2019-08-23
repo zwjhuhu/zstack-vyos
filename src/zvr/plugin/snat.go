@@ -1,25 +1,26 @@
 package plugin
 
 import (
+	"fmt"
 	"zvr/server"
 	"zvr/utils"
-	"fmt"
+
 	log "github.com/Sirupsen/logrus"
 )
 
 const (
-	SET_SNAT_PATH = "/setsnat"
-	REMOVE_SNAT_PATH = "/removesnat"
-	SYNC_SNAT_PATH = "/syncsnat"
+	SET_SNAT_PATH       = "/setsnat"
+	REMOVE_SNAT_PATH    = "/removesnat"
+	SYNC_SNAT_PATH      = "/syncsnat"
 	SET_SNAT_STATE_PATH = "/setsnatservicestate"
 )
 
 type snatInfo struct {
-	PublicNicMac string `json:"publicNicMac"`
-	PublicIp string `json:"publicIp"`
+	PublicNicMac  string `json:"publicNicMac"`
+	PublicIp      string `json:"publicIp"`
 	PrivateNicMac string `json:"privateNicMac"`
-	PrivateNicIp string `json:"privateNicIp"`
-	SnatNetmask string `json:"snatNetmask"`
+	PrivateNicIp  string `json:"privateNicIp"`
+	SnatNetmask   string `json:"snatNetmask"`
 }
 
 type setSnatCmd struct {
@@ -35,8 +36,8 @@ type syncSnatCmd struct {
 }
 
 type setSnatStateCmd struct {
-	Snats []snatInfo `json:"snats"`
-	Enable bool `json:"enabled"`
+	Snats  []snatInfo `json:"snats"`
+	Enable bool       `json:"enabled"`
 }
 
 type setNetworkServiceRsp struct {
@@ -45,17 +46,18 @@ type setNetworkServiceRsp struct {
 
 var SNAT_RULE_NUMBER = 9999
 
-func getNicSNATRuleNumber(nicNo int)  (pubNicRuleNo int, priNicRuleNo int){
-	pubNicRuleNo = SNAT_RULE_NUMBER - nicNo * 2
+func getNicSNATRuleNumber(nicNo int) (pubNicRuleNo int, priNicRuleNo int) {
+	pubNicRuleNo = SNAT_RULE_NUMBER - nicNo*2
 	priNicRuleNo = pubNicRuleNo - 1
 	return
 }
 
-func setSnatRule(pubNic, priNic, priCidr, pubIp string)  {
-	rule := utils.NewSnatIptablesRule(priCidr, pubIp, pubNic, utils.SNAT, utils.SNATComment + priCidr)
+func setSnatRule(pubNic, priNic, priCidr, pubIp string) {
+	rule := utils.NewSnatIptablesRule(priCidr, pubIp, pubNic, utils.SNAT, utils.SNATComment+priCidr)
 	utils.InsertNatRule(rule, utils.POSTROUTING)
-	rule = utils.NewSnatIptablesRule(priCidr, pubIp, priNic, utils.SNAT, utils.SNATComment + priCidr)
-	utils.InsertNatRule(rule, utils.POSTROUTING)
+	// FIXME why need this?
+	//rule = utils.NewSnatIptablesRule(priCidr, pubIp, priNic, utils.SNAT, utils.SNATComment + priCidr)
+	//utils.InsertNatRule(rule, utils.POSTROUTING)
 }
 
 func setSnatHandler(ctx *server.CommandContext) interface{} {
@@ -63,10 +65,14 @@ func setSnatHandler(ctx *server.CommandContext) interface{} {
 	ctx.GetCommand(cmd)
 
 	s := cmd.Snat
-	outNic, err := utils.GetNicNameByMac(s.PublicNicMac); utils.PanicOnError(err)
-	inNic, err := utils.GetNicNameByMac(s.PrivateNicMac); utils.PanicOnError(err)
-	nicNumber, err := utils.GetNicNumber(inNic); utils.PanicOnError(err)
-	address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask); utils.PanicOnError(err)
+	outNic, err := utils.GetNicNameByMac(s.PublicNicMac)
+	utils.PanicOnError(err)
+	inNic, err := utils.GetNicNameByMac(s.PrivateNicMac)
+	utils.PanicOnError(err)
+	nicNumber, err := utils.GetNicNumber(inNic)
+	utils.PanicOnError(err)
+	address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask)
+	utils.PanicOnError(err)
 
 	if utils.IsSkipVyosIptables() {
 		setSnatRule(outNic, inNic, address, s.PublicIp)
@@ -74,7 +80,7 @@ func setSnatHandler(ctx *server.CommandContext) interface{} {
 		// make source nat rule as the latest rule
 		// in case there are EIP rules
 		tree := server.NewParserFromShowConfiguration().Tree
-		pubNicRuleNo, priNicRuleNo := getNicSNATRuleNumber(nicNumber)
+		pubNicRuleNo, _ := getNicSNATRuleNumber(nicNumber)
 		setted := false
 		if !hasRuleNumberForAddress(tree, address, pubNicRuleNo) {
 			tree.SetSnatWithRuleNumber(pubNicRuleNo,
@@ -85,14 +91,15 @@ func setSnatHandler(ctx *server.CommandContext) interface{} {
 			setted = true
 		}
 
-		if !hasRuleNumberForAddress(tree, address, priNicRuleNo) {
+		// FIXME why need this?
+		/*if !hasRuleNumberForAddress(tree, address, priNicRuleNo) {
 			tree.SetSnatWithRuleNumber(priNicRuleNo,
 				fmt.Sprintf("outbound-interface %s", inNic),
 				fmt.Sprintf("source address %v", address),
 				fmt.Sprintf("translation address %s", s.PublicIp),
 			)
 			setted = true
-		}
+		}*/
 
 		if setted {
 			tree.Apply(false)
@@ -102,7 +109,7 @@ func setSnatHandler(ctx *server.CommandContext) interface{} {
 	return nil
 }
 
-func deleteSnatRule(priCidr string)  {
+func deleteSnatRule(priCidr string) {
 	utils.DeleteSNatRuleByComment(utils.SNATComment + priCidr)
 }
 
@@ -112,15 +119,18 @@ func removeSnatHandler(ctx *server.CommandContext) interface{} {
 
 	if utils.IsSkipVyosIptables() {
 		for _, s := range cmd.NatInfo {
-			address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask); utils.PanicOnError(err)
+			address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask)
+			utils.PanicOnError(err)
 			deleteSnatRule(address)
 		}
 	} else {
 		tree := server.NewParserFromShowConfiguration().Tree
 
 		for _, s := range cmd.NatInfo {
-			inNic, err := utils.GetNicNameByMac(s.PrivateNicMac); utils.PanicOnError(err)
-			nicNumber, err := utils.GetNicNumber(inNic); utils.PanicOnError(err)
+			inNic, err := utils.GetNicNameByMac(s.PrivateNicMac)
+			utils.PanicOnError(err)
+			nicNumber, err := utils.GetNicNumber(inNic)
+			utils.PanicOnError(err)
 			pubNicRuleNo, priNicRuleNo := getNicSNATRuleNumber(nicNumber)
 			if rs := tree.Get(fmt.Sprintf("nat source rule %v", pubNicRuleNo)); rs == nil {
 				log.Debugf(fmt.Sprintf("nat source rule %v not found", pubNicRuleNo))
@@ -158,32 +168,39 @@ func syncSnatByIptables(Snats []snatInfo, state bool) {
 	}
 
 	for _, s := range Snats {
-		outNic, err := utils.GetNicNameByMac(s.PublicNicMac); utils.PanicOnError(err)
-		inNic, err := utils.GetNicNameByMac(s.PrivateNicMac); utils.PanicOnError(err)
-		address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask); utils.PanicOnError(err)
+		outNic, err := utils.GetNicNameByMac(s.PublicNicMac)
+		utils.PanicOnError(err)
+		inNic, err := utils.GetNicNameByMac(s.PrivateNicMac)
+		utils.PanicOnError(err)
+		address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask)
+		utils.PanicOnError(err)
 
 		setSnatRule(outNic, inNic, address, s.PublicIp)
 	}
 }
 
-
 func applySnatRules(Snats []snatInfo, state bool) {
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	for _, s := range Snats {
-		outNic, err := utils.GetNicNameByMac(s.PublicNicMac); utils.PanicOnError(err)
-		inNic, err := utils.GetNicNameByMac(s.PrivateNicMac); utils.PanicOnError(err)
-		nicNumber, err := utils.GetNicNumber(inNic); utils.PanicOnError(err)
-		address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask); utils.PanicOnError(err)
+		outNic, err := utils.GetNicNameByMac(s.PublicNicMac)
+		utils.PanicOnError(err)
+		inNic, err := utils.GetNicNameByMac(s.PrivateNicMac)
+		utils.PanicOnError(err)
+		nicNumber, err := utils.GetNicNumber(inNic)
+		utils.PanicOnError(err)
+		address, err := utils.GetNetworkNumber(s.PrivateNicIp, s.SnatNetmask)
+		utils.PanicOnError(err)
 
-		pubNicRuleNo, priNicRuleNo := getNicSNATRuleNumber(nicNumber)
+		pubNicRuleNo, _ := getNicSNATRuleNumber(nicNumber)
 		if rs := tree.Getf("nat source rule %v", pubNicRuleNo); rs != nil {
 			rs.Delete()
 		}
 
-		if rs := tree.Getf("nat source rule %v", priNicRuleNo); rs != nil {
+		// FIXME why need this?
+		/*if rs := tree.Getf("nat source rule %v", priNicRuleNo); rs != nil {
 			rs.Delete()
-		}
+		}*/
 
 		if state == true {
 			tree.SetSnatWithRuleNumber(pubNicRuleNo,
@@ -192,11 +209,11 @@ func applySnatRules(Snats []snatInfo, state bool) {
 				fmt.Sprintf("translation address %s", s.PublicIp),
 			)
 
-			tree.SetSnatWithRuleNumber(priNicRuleNo,
+			/*tree.SetSnatWithRuleNumber(priNicRuleNo,
 				fmt.Sprintf("outbound-interface %s", inNic),
 				fmt.Sprintf("source address %v", address),
 				fmt.Sprintf("translation address %s", s.PublicIp),
-			)
+			)*/
 		}
 	}
 
@@ -215,9 +232,9 @@ func setSnatStateHandler(ctx *server.CommandContext) interface{} {
 	}
 
 	if cmd.Enable {
-		return setNetworkServiceRsp{ServiceStatus:"enable"}
+		return setNetworkServiceRsp{ServiceStatus: "enable"}
 	} else {
-		return setNetworkServiceRsp{ServiceStatus:"disable"}
+		return setNetworkServiceRsp{ServiceStatus: "disable"}
 	}
 }
 
@@ -242,7 +259,6 @@ func syncSnatHandler(ctx *server.CommandContext) interface{} {
 
 	return nil
 }
-
 
 func SnatEntryPoint() {
 	server.RegisterAsyncCommandHandler(SET_SNAT_PATH, server.VyosLock(setSnatHandler))

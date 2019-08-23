@@ -3,26 +3,26 @@ package plugin
 import (
 	"fmt"
 	"strings"
-	"zvr/utils"
 	"zvr/server"
+	"zvr/utils"
 )
 
 const (
-	ADD_DHCP_PATH = "/adddhcp"
+	ADD_DHCP_PATH    = "/adddhcp"
 	REMOVE_DHCP_PATH = "/removedhcp"
 )
 
 type dhcpInfo struct {
-	Ip string `json:"ip"`
-	Mac string `json:"mac"`
-	Netmask string `json:"netmask"`
-	Gateway string `json:"gateway"`
-	Dns []string `json:"dns"`
-	Hostname string `json:"hostname"`
-	VrNicMac string `json:"vrNicMac"`
-	DnsDomain string `json:"dnsDomain"`
-	IsDefaultL3Network bool `json:"isDefaultL3Network"`
-	Mtu int `json:"mtu"`
+	Ip                 string   `json:"ip"`
+	Mac                string   `json:"mac"`
+	Netmask            string   `json:"netmask"`
+	Gateway            string   `json:"gateway"`
+	Dns                []string `json:"dns"`
+	Hostname           string   `json:"hostname"`
+	VrNicMac           string   `json:"vrNicMac"`
+	DnsDomain          string   `json:"dnsDomain"`
+	IsDefaultL3Network bool     `json:"isDefaultL3Network"`
+	Mtu                int      `json:"mtu"`
 }
 
 type addDhcpCmd struct {
@@ -60,7 +60,7 @@ func makeDhcpFirewallRuleDescription(netname string) string {
 	return fmt.Sprintf("DHCP-for-%s", netname)
 }
 
-func setDhcpFirewallRules(nicname string)  {
+func setDhcpFirewallRules(nicname string) {
 	rule := utils.NewIptablesRule(utils.UDP, "", "", 0, 67, nil, utils.ACCEPT, utils.DHCPRuleComment)
 	utils.InsertFireWallRule(nicname, rule, utils.LOCAL)
 	rule = utils.NewIptablesRule(utils.UDP, "", "", 0, 68, nil, utils.ACCEPT, utils.DHCPRuleComment)
@@ -82,7 +82,7 @@ func setDhcp(infos []dhcpInfo) {
 		netName, subnet, nicname := infoToNetNameAndSubnet(info)
 		subnetNames[vrMac] = netName
 
-		tree.Setf("service dhcp-server shared-network-name %s authoritative enable", netName)
+		tree.Setf("service dhcp-server shared-network-name %s authoritative", netName)
 
 		// DHCPD requires at least one lease rule in the configuration
 		// We use the gateway as the default lease
@@ -109,7 +109,8 @@ func setDhcp(infos []dhcpInfo) {
 
 	for _, info := range infos {
 		netName := subnetNames[info.VrNicMac]
-		subnet, err := utils.GetNetworkNumber(info.Ip, info.Netmask); utils.PanicOnError(err)
+		subnet, err := utils.GetNetworkNumber(info.Ip, info.Netmask)
+		utils.PanicOnError(err)
 		serverName := makeServerName(info.Mac)
 		tree.Setf("service dhcp-server shared-network-name %s subnet %s static-mapping %s ip-address %s", netName, subnet, serverName, info.Ip)
 		tree.Setf("service dhcp-server shared-network-name %s subnet %s static-mapping %s mac-address %s", netName, subnet, serverName, strings.ToLower(info.Mac))
@@ -160,12 +161,15 @@ func deleteDhcpdPIDFile() {
 		Command: "sudo rm -f /var/run/dhcpd-unused.pid",
 	}
 
-	err := b.Run(); utils.PanicOnError(err)
+	err := b.Run()
+	utils.PanicOnError(err)
 }
 
 func infoToNetNameAndSubnet(info dhcpInfo) (string, string, string) {
-	nicname, err := utils.GetNicNameByMac(info.VrNicMac); utils.PanicOnError(err)
-	subnet, err := utils.GetNetworkNumber(info.Ip, info.Netmask); utils.PanicOnError(err)
+	nicname, err := utils.GetNicNameByMac(info.VrNicMac)
+	utils.PanicOnError(err)
+	subnet, err := utils.GetNetworkNumber(info.Ip, info.Netmask)
+	utils.PanicOnError(err)
 
 	return makeLanName(nicname), subnet, nicname
 }
@@ -199,10 +203,9 @@ func removeDhcpHandler(ctx *server.CommandContext) interface{} {
 	return nil
 }
 
-var runVyosScript = func(script string, args map[string]string)  {
+var runVyosScript = func(script string, args map[string]string) {
 	server.RunVyosScript(script, args)
 }
-
 
 func DhcpEntryPoint() {
 	server.RegisterAsyncCommandHandler(ADD_DHCP_PATH, server.VyosLock(addDhcpHandler))
