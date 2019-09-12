@@ -1,20 +1,20 @@
 package plugin
 
 import (
+	"fmt"
 	"zvr/server"
 	"zvr/utils"
-	"fmt"
 )
 
 const (
 	REMOVE_DNS_PATH = "/removedns"
-	SET_DNS_PATH = "/setdns"
+	SET_DNS_PATH    = "/setdns"
 	SET_VPNDNS_PATH = "/setvpcdns"
 )
 
 type dnsInfo struct {
 	DnsAddress string `json:"dnsAddress"`
-	NicMac string `json:"nicMac"`
+	NicMac     string `json:"nicMac"`
 }
 
 type setDnsCmd struct {
@@ -26,10 +26,9 @@ type removeDnsCmd struct {
 }
 
 type setVpcDnsCmd struct {
-	Dns []string `json:"dns"`
+	Dns    []string `json:"dns"`
 	NicMac []string `json:"nicMac"`
 }
-
 
 func makeDnsFirewallRuleDescription(nicname string) string {
 	return fmt.Sprintf("DNS-for-%s", nicname)
@@ -73,9 +72,14 @@ func setDnsHandler(ctx *server.CommandContext) interface{} {
 	}
 
 	for mac, _ := range dnsByMac {
-		eth, err := utils.GetNicNameByMac(mac); utils.PanicOnError(err)
-		tree.SetfWithoutCheckExisting("service dns forwarding listen-on %s", eth)
+		eth, err := utils.GetNicNameByMac(mac)
+		utils.PanicOnError(err)
+		ip, err := utils.GetIpByNicName(eth)
+		utils.PanicOnError(err)
 
+		// tree.SetfWithoutCheckExisting("service dns forwarding listen-on %s", eth)
+
+		tree.SetfWithoutCheckExisting("service dns forwarding listen-address %s", ip)
 		if utils.IsSkipVyosIptables() {
 			setDnsFirewallRules(eth)
 		} else {
@@ -132,24 +136,30 @@ func setVpcDnsHandler(ctx *server.CommandContext) interface{} {
 		}
 	}
 
-	if (len(cmd.Dns) == 0 || len(cmd.NicMac) == 0) {
+	if len(cmd.Dns) == 0 || len(cmd.NicMac) == 0 {
 		tree.Apply(false)
 		return nil
 	}
 
 	/* add new configure */
 	var nics []string
-	for _, mac := range cmd.NicMac{
-		eth, err := utils.GetNicNameByMac(mac); utils.PanicOnError(err)
+	for _, mac := range cmd.NicMac {
+		eth, err := utils.GetNicNameByMac(mac)
+		utils.PanicOnError(err)
 		nics = append(nics, eth)
 	}
-	if (len(nics) == 0) {
+	if len(nics) == 0 {
 		tree.Apply(false)
 		return nil
 	}
 
 	for _, nic := range nics {
-		tree.SetfWithoutCheckExisting("service dns forwarding listen-on %s", nic)
+		//tree.SetfWithoutCheckExisting("service dns forwarding listen-on %s", nic)
+
+		ip, err := utils.GetIpByNicName(nic)
+		utils.PanicOnError(err)
+
+		tree.SetfWithoutCheckExisting("service dns forwarding listen-address %s", ip)
 
 		if utils.IsSkipVyosIptables() {
 			setDnsFirewallRules(nic)

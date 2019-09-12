@@ -1,20 +1,21 @@
 package main
 
 import (
-	"zvr/utils"
-	"time"
-	log "github.com/Sirupsen/logrus"
-	"io/ioutil"
 	"encoding/json"
-	"github.com/pkg/errors"
 	"fmt"
-	"zvr/server"
-	"strings"
+	"io/ioutil"
 	"os"
+	"strings"
+	"time"
+	"zvr/server"
+	"zvr/utils"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 const (
-	VIRTIO_PORT_PATH = "/dev/virtio-ports/applianceVm.vport"
+	VIRTIO_PORT_PATH     = "/dev/virtio-ports/applianceVm.vport"
 	BOOTSTRAP_INFO_CACHE = "/home/vyos/zvr/bootstrap-info.json"
 	TMP_LOCATION_FOR_ESX = "/tmp/bootstrap-info.json"
 	// use this rule number to set a rule which confirm route entry work issue ZSTAC-6170
@@ -22,22 +23,22 @@ const (
 )
 
 type nic struct {
-	mac string
-	ip string
-	name string
-	netmask string
-	isDefaultRoute bool
-	gateway string
-	category string
-	l2type string
+	mac                 string
+	ip                  string
+	name                string
+	netmask             string
+	isDefaultRoute      bool
+	gateway             string
+	category            string
+	l2type              string
 	l2PhysicalInterface string
-	vni int
+	vni                 int
 }
 
 var bootstrapInfo map[string]interface{} = make(map[string]interface{})
 var nics map[string]*nic = make(map[string]*nic)
 
-func waitIptablesServiceOnline()  {
+func waitIptablesServiceOnline() {
 	bash := utils.Bash{
 		Command: "/sbin/iptables-save",
 	}
@@ -53,7 +54,8 @@ func waitIptablesServiceOnline()  {
 
 func waitVirtioPortOnline() {
 	utils.LoopRunUntilSuccessOrTimeout(func() bool {
-		ok, err := utils.PathExists(VIRTIO_PORT_PATH); utils.PanicOnError(err)
+		ok, err := utils.PathExists(VIRTIO_PORT_PATH)
+		utils.PanicOnError(err)
 		if !ok {
 			log.Debugf("%s doesn't not exist, wait it ...", VIRTIO_PORT_PATH)
 		}
@@ -80,14 +82,18 @@ func parseEsxBootInfo() {
 			return false
 		}
 
-		content, err := ioutil.ReadFile(TMP_LOCATION_FOR_ESX); utils.PanicOnError(err)
+		content, err := ioutil.ReadFile(TMP_LOCATION_FOR_ESX)
+		utils.PanicOnError(err)
 		if err = json.Unmarshal(content, &bootstrapInfo); err != nil {
 			panic(errors.Wrap(err, fmt.Sprintf("unable to JSON parse:\n %s", string(content))))
 		}
 
-		err = utils.MkdirForFile(BOOTSTRAP_INFO_CACHE, 0666); utils.PanicOnError(err)
-		err = os.Rename(TMP_LOCATION_FOR_ESX, BOOTSTRAP_INFO_CACHE); utils.PanicOnError(err)
-		err = os.Chmod(BOOTSTRAP_INFO_CACHE, 0777); utils.PanicOnError(err)
+		err = utils.MkdirForFile(BOOTSTRAP_INFO_CACHE, 0666)
+		utils.PanicOnError(err)
+		err = os.Rename(TMP_LOCATION_FOR_ESX, BOOTSTRAP_INFO_CACHE)
+		utils.PanicOnError(err)
+		err = os.Chmod(BOOTSTRAP_INFO_CACHE, 0777)
+		utils.PanicOnError(err)
 		log.Debugf("recieved bootstrap info:\n%s", string(content))
 		return true
 	}, time.Duration(300)*time.Second, time.Duration(1)*time.Second)
@@ -95,7 +101,8 @@ func parseEsxBootInfo() {
 
 func parseKvmBootInfo() {
 	utils.LoopRunUntilSuccessOrTimeout(func() bool {
-		content, err := ioutil.ReadFile(VIRTIO_PORT_PATH); utils.PanicOnError(err)
+		content, err := ioutil.ReadFile(VIRTIO_PORT_PATH)
+		utils.PanicOnError(err)
 		if len(content) == 0 {
 			log.Debugf("no content in %s, it may not be ready, wait it ...", VIRTIO_PORT_PATH)
 			return false
@@ -105,15 +112,18 @@ func parseKvmBootInfo() {
 			panic(errors.Wrap(err, fmt.Sprintf("unable to JSON parse:\n %s", string(content))))
 		}
 
-		err = utils.MkdirForFile(BOOTSTRAP_INFO_CACHE, 0666); utils.PanicOnError(err)
-		err = ioutil.WriteFile(BOOTSTRAP_INFO_CACHE, content, 0666); utils.PanicOnError(err)
-		err = os.Chmod(BOOTSTRAP_INFO_CACHE, 0777); utils.PanicOnError(err)
+		err = utils.MkdirForFile(BOOTSTRAP_INFO_CACHE, 0666)
+		utils.PanicOnError(err)
+		err = ioutil.WriteFile(BOOTSTRAP_INFO_CACHE, content, 0666)
+		utils.PanicOnError(err)
+		err = os.Chmod(BOOTSTRAP_INFO_CACHE, 0777)
+		utils.PanicOnError(err)
 		log.Debugf("recieved bootstrap info:\n%s", string(content))
 		return true
 	}, time.Duration(300)*time.Second, time.Duration(1)*time.Second)
 }
 
-func resetVyos()  {
+func resetVyos() {
 	// clear all configuration in case someone runs 'save' command manually before,
 	// to keep the vyos must be stateless
 
@@ -143,11 +153,14 @@ func configureVyos() {
 		panic(errors.New("no field 'managementNic' in bootstrap info"))
 	}
 
-	eth0 := &nic{name: "eth0" }
+	eth0 := &nic{name: "eth0"}
 	var ok bool
-	eth0.mac, ok = mgmtNic["mac"].(string); utils.PanicIfError(ok, errors.New("cannot find 'mac' field for the management nic"))
-	eth0.netmask, ok = mgmtNic["netmask"].(string); utils.PanicIfError(ok, errors.New("cannot find 'netmask' field for the management nic"))
-	eth0.ip, ok = mgmtNic["ip"].(string); utils.PanicIfError(ok, errors.New("cannot find 'ip' field for the management nic"))
+	eth0.mac, ok = mgmtNic["mac"].(string)
+	utils.PanicIfError(ok, errors.New("cannot find 'mac' field for the management nic"))
+	eth0.netmask, ok = mgmtNic["netmask"].(string)
+	utils.PanicIfError(ok, errors.New("cannot find 'netmask' field for the management nic"))
+	eth0.ip, ok = mgmtNic["ip"].(string)
+	utils.PanicIfError(ok, errors.New("cannot find 'ip' field for the management nic"))
 	eth0.isDefaultRoute = mgmtNic["isDefaultRoute"].(bool)
 	eth0.gateway = mgmtNic["gateway"].(string)
 	if mgmtNic["l2type"] != nil {
@@ -167,10 +180,14 @@ func configureVyos() {
 		for _, o := range otherNics {
 			onic := o.(map[string]interface{})
 			n := &nic{}
-			n.name, ok = onic["deviceName"].(string); utils.PanicIfError(ok, fmt.Errorf("cannot find 'deviceName' field for the nic"))
-			n.mac, ok = onic["mac"].(string); utils.PanicIfError(ok, errors.New("cannot find 'mac' field for the nic"))
-			n.netmask, ok = onic["netmask"].(string); utils.PanicIfError(ok, fmt.Errorf("cannot find 'netmask' field for the nic[name:%s]", n.name))
-			n.ip, ok = onic["ip"].(string); utils.PanicIfError(ok, fmt.Errorf("cannot find 'ip' field for the nic[name:%s]", n.name))
+			n.name, ok = onic["deviceName"].(string)
+			utils.PanicIfError(ok, fmt.Errorf("cannot find 'deviceName' field for the nic"))
+			n.mac, ok = onic["mac"].(string)
+			utils.PanicIfError(ok, errors.New("cannot find 'mac' field for the nic"))
+			n.netmask, ok = onic["netmask"].(string)
+			utils.PanicIfError(ok, fmt.Errorf("cannot find 'netmask' field for the nic[name:%s]", n.name))
+			n.ip, ok = onic["ip"].(string)
+			utils.PanicIfError(ok, fmt.Errorf("cannot find 'ip' field for the nic[name:%s]", n.name))
 			n.gateway = onic["gateway"].(string)
 			n.isDefaultRoute = onic["isDefaultRoute"].(bool)
 			if onic["l2type"] != nil {
@@ -203,11 +220,12 @@ func configureVyos() {
 		utils.Assertf(nic.netmask != "", "netmask cannot be empty[nicname:%s]", nic.name)
 		utils.Assertf(nic.mac != "", "mac cannot be empty[nicname:%s]", nic.name)
 
-		nicname, err := utils.GetNicNameByMac(nic.mac); utils.PanicOnError(err)
+		nicname, err := utils.GetNicNameByMac(nic.mac)
+		utils.PanicOnError(err)
 		if nicname != nic.name {
 			devNames = append(devNames, &deviceName{
 				expected: nic.name,
-				actual: nicname,
+				actual:   nicname,
 			})
 		}
 	}
@@ -274,7 +292,8 @@ func configureVyos() {
 	}
 
 	setNic := func(nic *nic) {
-		cidr, err := utils.NetmaskToCIDR(nic.netmask); utils.PanicOnError(err)
+		cidr, err := utils.NetmaskToCIDR(nic.netmask)
+		utils.PanicOnError(err)
 		//tree.Setf("interfaces ethernet %s hw-id %s", nic.name, nic.mac)
 		tree.Setf("interfaces ethernet %s address %s", nic.name, fmt.Sprintf("%v/%v", nic.ip, cidr))
 		tree.Setf("interfaces ethernet %s duplex auto", nic.name)
@@ -305,7 +324,7 @@ func configureVyos() {
 	log.Debugf("bootstrapInfo %+v", bootstrapInfo)
 	log.Debugf("SkipVyosIptables %+v", SkipVyosIptables)
 
-	if (SkipVyosIptables) {
+	if SkipVyosIptables {
 		for _, nic := range nics {
 			var err error
 			setNic(nic)
@@ -391,7 +410,8 @@ func configureVyos() {
 
 	tree.Set("system time-zone Asia/Shanghai")
 
-	password, found := bootstrapInfo["vyosPassword"]; utils.Assert(found && password != "", "vyosPassword cannot be empty")
+	password, found := bootstrapInfo["vyosPassword"]
+	utils.Assert(found && password != "", "vyosPassword cannot be empty")
 	if !isOnVMwareHypervisor() {
 		tree.Setf("system login user vyos authentication plaintext-password %v", password)
 	}
@@ -399,7 +419,7 @@ func configureVyos() {
 	tree.Apply(true)
 
 	arping := func(nicname, ip, gateway string) {
-		b := utils.Bash{Command: fmt.Sprintf("sudo arping -q -A -w 1.5 -c 1 -I %s %s > /dev/null", nicname, ip) }
+		b := utils.Bash{Command: fmt.Sprintf("sudo arping -q -A -w 1.5 -c 1 -I %s %s > /dev/null", nicname, ip)}
 		b.Run()
 	}
 
@@ -414,11 +434,12 @@ func configureVyos() {
 		log.Debugf("can not get management node ip from bootstrap info, skip to config route")
 	} else {
 		mgmtNodeIpStr := mgmtNodeIp.(string)
-		if (utils.CheckMgmtCidrContainsIp(mgmtNodeIpStr, mgmtNic) == false) {
-			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string));
+		if utils.CheckMgmtCidrContainsIp(mgmtNodeIpStr, mgmtNic) == false {
+			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
 			utils.PanicOnError(err)
 		} else if utils.GetNicForRoute(mgmtNodeIpStr) != "eth0" {
-			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", ""); utils.PanicOnError(err)
+			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", "")
+			utils.PanicOnError(err)
 		} else {
 			log.Debugf("the cidr of vr mgmt contains callback ip, skip to configure route")
 		}
@@ -444,7 +465,7 @@ func configureVyos() {
 	}
 }
 
-func startZvr()  {
+func startZvr() {
 	b := utils.Bash{
 		Command: "bash -x /etc/init.d/zstack-virtualrouteragent restart >> /tmp/agentRestart.log 2>&1",
 	}
@@ -462,6 +483,6 @@ func main() {
 		parseKvmBootInfo()
 	}
 	configureVyos()
-	startZvr()
+	//startZvr()
 	log.Debugf("successfully configured the sysmtem and bootstrap the zstack virtual router agents")
 }

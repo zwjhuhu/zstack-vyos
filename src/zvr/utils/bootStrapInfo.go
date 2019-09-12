@@ -29,7 +29,7 @@ func GetMgmtInfoFromBootInfo() map[string]interface{} {
 }
 
 func IsSkipVyosIptables() bool {
-	SkipVyosIptables, ok := bootstrapInfo["SkipVyosIptables"].(bool)
+	SkipVyosIptables, ok := bootstrapInfo["skipVyosIptables"].(bool)
 	if !ok {
 		return false
 	}
@@ -48,5 +48,5 @@ func InitBootStrapInfo() {
 		log.Debugf("can not parse info from %s, can not get mgmt gateway", BOOTSTRAP_INFO_CACHE)
 	}
 
-	log.Debugf("SkipVyosIptables %t", bootstrapInfo["SkipVyosIptables"].(bool))
+	log.Debugf("skipVyosIptables %t", bootstrapInfo["skipVyosIptables"].(bool))
 }

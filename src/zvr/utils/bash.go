@@ -2,33 +2,35 @@ package utils
 
 import (
 	"bytes"
-	"text/template"
+	"fmt"
+	"io/ioutil"
 	"os/exec"
 	"syscall"
-	"fmt"
-	"github.com/pkg/errors"
+	"text/template"
+
 	"github.com/Sirupsen/logrus"
-	"io/ioutil"
-	//"os"
+	"github.com/pkg/errors"
+
 	"os"
 )
 
 type Bash struct {
-	Command string
-	PipeFail bool
+	Command   string
+	PipeFail  bool
 	Arguments map[string]string
-	NoLog bool
+	NoLog     bool
+	UseTemp   bool
 
 	retCode int
-	stdout string
-	stderr string
-	err error
+	stdout  string
+	stderr  string
+	err     error
 }
 
 func (b *Bash) build() error {
 	Assert(b.Command != "", "Command cannot be emptry string")
 
-	if (b.Arguments != nil) {
+	if b.Arguments != nil {
 		tmpl, err := template.New("script").Parse(b.Command)
 		if err != nil {
 			return err
@@ -53,7 +55,7 @@ func (b *Bash) build() error {
 func (b *Bash) Run() error {
 	ret, so, se, err := b.RunWithReturn()
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to execute the command[%s] because of an internal errro",  b.Command))
+		return errors.Wrap(err, fmt.Sprintf("failed to execute the command[%s] because of an internal errro", b.Command))
 	}
 
 	if ret != 0 {
@@ -77,12 +79,16 @@ func (b *Bash) RunWithReturn() (retCode int, stdout, stderr string, err error) {
 	var so, se bytes.Buffer
 	var cmd *exec.Cmd
 
-	if len(b.Command) > 1024* 4 {
+	if b.UseTemp || len(b.Command) > 1024*4 {
 		content := []byte(b.Command)
-		tmpfile, err := ioutil.TempFile("/home/vyos", "zvrcommand"); PanicOnError(err)
-		err = tmpfile.Chmod(0777); PanicOnError(err)
-		_, err = tmpfile.Write(content); PanicOnError(err)
-		err = tmpfile.Close(); PanicOnError(err)
+		tmpfile, err := ioutil.TempFile("/home/vyos", "zvrcommand")
+		PanicOnError(err)
+		err = tmpfile.Chmod(0777)
+		PanicOnError(err)
+		_, err = tmpfile.Write(content)
+		PanicOnError(err)
+		err = tmpfile.Close()
+		PanicOnError(err)
 		cmd = exec.Command("bash", "-c", tmpfile.Name())
 		//ioutil.WriteFile(tmpfile.Name(), content, 0777)
 		//path := "/home/vyos/zvrcommand"
@@ -119,8 +125,8 @@ func (b *Bash) RunWithReturn() (retCode int, stdout, stderr string, err error) {
 	if !b.NoLog {
 		logrus.WithFields(logrus.Fields{
 			"return code": fmt.Sprintf("%v", retCode),
-			"stdout": stdout,
-			"stderr": stderr,
+			"stdout":      stdout,
+			"stderr":      stderr,
 		}).Debugf("shell done: %s", b.Command)
 	}
 
@@ -142,5 +148,3 @@ func (bash *Bash) PanicIfError() {
 func NewBash() *Bash {
 	return &Bash{}
 }
-
-

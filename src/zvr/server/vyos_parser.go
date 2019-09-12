@@ -586,7 +586,7 @@ func (t *VyosConfigTree) SwapSnatRule(leftRuleNumber int, rightRuleNumber int) {
 // set the config without checking any existing config with the same path
 // usually used for set multi-value keys
 func (t *VyosConfigTree) SetWithoutCheckExisting(config string) {
-	t.changeCommands = append(t.changeCommands, fmt.Sprintf("$SET %s", config))
+	t.changeCommands = append(t.changeCommands, fmt.Sprintf("set %s", config))
 }
 
 // set the config without checking any existing config with the same path
@@ -624,8 +624,8 @@ func (t *VyosConfigTree) Set(config string) bool {
 			keyNode.deleteNode(cvalue)
 			keyNode.addNode(value)
 			// the value is changed, delete the old one
-			t.changeCommands = append(t.changeCommands, fmt.Sprintf("$DELETE %s", key))
-			t.changeCommands = append(t.changeCommands, fmt.Sprintf("$SET %s", config))
+			t.changeCommands = append(t.changeCommands, fmt.Sprintf("delete %s", key))
+			t.changeCommands = append(t.changeCommands, fmt.Sprintf("set %s", config))
 			return true
 		} else {
 			// the value is unchanged
@@ -637,7 +637,7 @@ func (t *VyosConfigTree) Set(config string) bool {
 		for _, c := range cs {
 			current = current.addNode(c)
 		}
-		t.changeCommands = append(t.changeCommands, fmt.Sprintf("$SET %s", config))
+		t.changeCommands = append(t.changeCommands, fmt.Sprintf("set %s", config))
 		return true
 	}
 }
@@ -677,7 +677,7 @@ func (t *VyosConfigTree) Delete(config string) bool {
 	}
 
 	n.deleteSelf()
-	t.changeCommands = append(t.changeCommands, fmt.Sprintf("$DELETE %s", config))
+	t.changeCommands = append(t.changeCommands, fmt.Sprintf("delete %s", config))
 	return true
 }
 
