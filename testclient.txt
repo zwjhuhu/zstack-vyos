@@ -1,4 +1,4 @@
-virt-install  --network bridge=vbr1 --virt-type kvm --noautoconsole  \
---graphics vnc,listen=0.0.0.0 --boot hd --name vyc1 --vcpus 1 --memory 256 \
---disk /var/lib/libvirt/images/vyc1.qcow2 \
+virt-install  --network network=vbr1 --virt-type kvm --noautoconsole  \
+--graphics vnc,listen=0.0.0.0 --boot hd --name vyc1 --vcpus 1 --memory 1024 \
+--disk /opt/test.qcow2 \
 --os-variant rhel7

@@ -29,7 +29,7 @@ if [ x$ETH0_IP == "x" ]; then
 fi
 
 get_pid() {
-    pgrep zvr
+    pgrep -x zvr
 }
 
 check_status() {

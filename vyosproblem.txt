@@ -1,8 +1,8 @@
-1. dns 配置过时
+1. dns 閰嶇疆杩囨椂
 WARNING: since VyOS 1.2.0, "service dns forwarding listen-on" is a limited compatibility option.
 It will only make DNS forwarder listen on addresses assigned to the interface at the time of commit
 which means it will NOT work properly with VRRP/clustering or addresses received from DHCP.
 Please reconfigure your system with "service dns forwarding listen-address" instead.
 
-2. DNS 找不到文件错
+2. DNS 鎵句笉鍒版枃浠堕敊
 

@@ -1,27 +1,29 @@
 package utils
 
 import (
-	"strings"
-	"strconv"
-	"fmt"
-	"github.com/pkg/errors"
-	"io/ioutil"
-	"path/filepath"
 	"encoding/json"
-	log "github.com/Sirupsen/logrus"
+	"fmt"
+	"io/ioutil"
 	"net"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 )
 
 const (
 	ZSTACK_ROUTE_PROTO = "zstack"
-	ZSTACK_ROUTE_PROTO_IDENTIFFER = "192"
+	//ZSTACK_ROUTE_PROTO_IDENTIFFER = "192" conflict
+	ZSTACK_ROUTE_PROTO_IDENTIFFER = "292"
 )
 
 func NetmaskToCIDR(netmask string) (int, error) {
 	countBit := func(num uint) int {
 		count := uint(0)
 		var i uint
-		for i = 31; i>0; i-- {
+		for i = 31; i > 0; i-- {
 			count += ((num << i) >> uint(31)) & uint(1)
 		}
 
@@ -44,17 +46,18 @@ func GetNetworkNumber(ip, netmask string) (string, error) {
 	ips := strings.Split(ip, ".")
 	masks := strings.Split(netmask, ".")
 
-	ipInByte :=  make([]interface{}, 4)
-	for i:=0; i<len(ips); i++ {
-		p, err := strconv.ParseUint(ips[i], 10, 32);
+	ipInByte := make([]interface{}, 4)
+	for i := 0; i < len(ips); i++ {
+		p, err := strconv.ParseUint(ips[i], 10, 32)
 		if err != nil {
 			return "", errors.Wrap(err, fmt.Sprintf("unable to get network number[ip:%v, netmask:%v]", ip, netmask))
 		}
-		m, err := strconv.ParseUint(masks[i], 10, 32); PanicOnError(err)
+		m, err := strconv.ParseUint(masks[i], 10, 32)
+		PanicOnError(err)
 		if err != nil {
 			return "", errors.Wrap(err, fmt.Sprintf("unable to get network number[ip:%v, netmask:%v]", ip, netmask))
 		}
-		ipInByte[i] = p&m
+		ipInByte[i] = p & m
 	}
 
 	cidr, err := NetmaskToCIDR(netmask)
@@ -67,7 +70,7 @@ func GetNetworkNumber(ip, netmask string) (string, error) {
 
 type Nic struct {
 	Name string
-	Mac string
+	Mac  string
 }
 
 func (nic Nic) String() string {
@@ -96,7 +99,7 @@ func GetAllNics() (map[string]Nic, error) {
 		}
 		nics[f.Name()] = Nic{
 			Name: strings.TrimSpace(f.Name()),
-			Mac: strings.TrimSpace(string(mac)),
+			Mac:  strings.TrimSpace(string(mac)),
 		}
 	}
 
@@ -204,7 +207,7 @@ func SetZStackRoute(ip string, nic string, gw string) error {
 		return err
 	}
 	// NOTE(WeiW): It will return 2 if exists
-	if ret != 0 && ret != 2{
+	if ret != 0 && ret != 2 {
 		return errors.New(fmt.Sprintf("add route to %s/32 via %s dev %s failed", ip, gw, nic))
 	}
 
@@ -215,7 +218,9 @@ func GetNicForRoute(ip string) string {
 	bash := Bash{
 		Command: fmt.Sprintf("ip -o r get %s | awk '{print $3}'", ip),
 	}
-	_, o, _, err := bash.RunWithReturn(); PanicOnError(err)
+	_, o, _, err := bash.RunWithReturn()
+	PanicOnError(err)
+	o = strings.Replace(o, "\n", "", -1)
 	return o
 }
 
@@ -236,14 +241,14 @@ func RemoveZStackRoute(ip string) error {
 }
 
 func SetZStackRouteProtoIdentifier() {
-	bash := Bash {
+	bash := Bash{
 		Command: "grep zstack /etc/iproute2/rt_protos",
 	}
-	check, _, _ , _ := bash.RunWithReturn()
+	check, _, _, _ := bash.RunWithReturn()
 
 	if check != 0 {
 		log.Debugf("no route proto zstack in /etc/iproute2/rt_protos")
-		bash = Bash {
+		bash = Bash{
 			Command: fmt.Sprintf("sudo bash -c \"echo -e '\n\n# Used by zstack\n%s     zstack' >> /etc/iproute2/rt_protos\"", ZSTACK_ROUTE_PROTO_IDENTIFFER),
 		}
 		bash.Run()
@@ -259,13 +264,15 @@ func GetNicNumber(nic string) (int, error) {
 }
 
 func CheckMgmtCidrContainsIp(ip string, mgmtNic map[string]interface{}) bool {
-	maskCidr, err := NetmaskToCIDR(mgmtNic["netmask"].(string)); PanicOnError(err)
-	_, mgmtNet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", mgmtNic["ip"], maskCidr)); PanicOnError(err)
+	maskCidr, err := NetmaskToCIDR(mgmtNic["netmask"].(string))
+	PanicOnError(err)
+	_, mgmtNet, err := net.ParseCIDR(fmt.Sprintf("%s/%d", mgmtNic["ip"], maskCidr))
+	PanicOnError(err)
 
 	return mgmtNet.Contains(net.ParseIP(ip))
 }
 
-func GetPrivteInterface() []string  {
+func GetPrivteInterface() []string {
 	bash := Bash{
 		Command: fmt.Sprintf("ip link | grep -B 2 'category:Private' | grep '<BROADCAST,MULTICAST' | awk -F ':' '{print $2}'"),
 	}
@@ -281,7 +288,7 @@ func GetPrivteInterface() []string  {
 	var nics []string
 	for _, name := range lines {
 		name = strings.Trim(name, " ")
-		if (name != "") {
+		if name != "" {
 			nics = append(nics, name)
 		}
 	}
@@ -293,11 +300,11 @@ func GetPrivteInterface() []string  {
 	return nics
 }
 
-func CleanConnTrackConnection(ip string, proto string, port int) error  {
+func CleanConnTrackConnection(ip string, proto string, port int) error {
 	var command string
-	if (proto == "") {
+	if proto == "" {
 		command = fmt.Sprintf("sudo conntrack -d %s -D", ip)
-	} else if (port == 0) {
+	} else if port == 0 {
 		command = fmt.Sprintf("sudo conntrack -d %s -p %s -D", ip, proto)
 	} else {
 		command = fmt.Sprintf("sudo conntrack -d %s -p %s --dport %d -D", ip, proto, port)

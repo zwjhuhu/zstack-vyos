@@ -129,7 +129,24 @@ func resetVyos() {
 
 	// delete all interfaces
 	tree := server.NewParserFromShowConfiguration().Tree
-	tree.Delete("interfaces ethernet")
+
+	//tree.Delete("interfaces ethernet")
+	keyNode := tree.Get("interfaces ethernet")
+	if keyNode != nil {
+		// the key found
+		children := keyNode.Children()
+		if children != nil && len(children) > 0 {
+			for _, node := range children {
+				for _, eth := range node.Children() {
+					str := eth.String()
+					if !strings.Contains(str, "hw-id") {
+						tree.Delete(str)
+					}
+				}
+
+			}
+		}
+	}
 	tree.Apply(true)
 
 	/*the API RunVyosScriptAsUserVyos doesn't work for this command.
@@ -175,8 +192,12 @@ func configureVyos() {
 	}
 	nics[eth0.name] = eth0
 
-	otherNics := bootstrapInfo["additionalNics"].([]interface{})
-	if otherNics != nil {
+	var otherNics []interface{}
+	if v, ok := bootstrapInfo["additionalNics"]; ok {
+		otherNics = v.([]interface{})
+	}
+
+	if len(otherNics) > 0 {
 		for _, o := range otherNics {
 			onic := o.(map[string]interface{})
 			n := &nic{}
@@ -188,8 +209,10 @@ func configureVyos() {
 			utils.PanicIfError(ok, fmt.Errorf("cannot find 'netmask' field for the nic[name:%s]", n.name))
 			n.ip, ok = onic["ip"].(string)
 			utils.PanicIfError(ok, fmt.Errorf("cannot find 'ip' field for the nic[name:%s]", n.name))
-			n.gateway = onic["gateway"].(string)
+
 			n.isDefaultRoute = onic["isDefaultRoute"].(bool)
+			n.gateway = onic["gateway"].(string)
+
 			if onic["l2type"] != nil {
 				n.l2type = onic["l2type"].(string)
 				n.category = onic["category"].(string)
@@ -297,10 +320,11 @@ func configureVyos() {
 		//tree.Setf("interfaces ethernet %s hw-id %s", nic.name, nic.mac)
 		tree.Setf("interfaces ethernet %s address %s", nic.name, fmt.Sprintf("%v/%v", nic.ip, cidr))
 		tree.Setf("interfaces ethernet %s duplex auto", nic.name)
-		tree.Setf("interfaces ethernet %s smp_affinity auto", nic.name)
+		//tree.Setf("interfaces ethernet %s smp_affinity auto", nic.name)
 		tree.Setf("interfaces ethernet %s speed auto", nic.name)
 		if nic.isDefaultRoute {
-			tree.Setf("system gateway-address %v", nic.gateway)
+			//tree.Setf("system gateway-address %v", nic.gateway)
+			tree.Setf("protocols static route 0.0.0.0/0 next-hop %s", nic.gateway)
 		}
 
 		if nic.l2type != "" {
@@ -316,15 +340,15 @@ func configureVyos() {
 	tree.Setf("service ssh listen-address %v", eth0.ip)
 
 	// configure firewall
-	/* SkipVyosIptables is a flag to indicate how to configure firewall and nat */
-	SkipVyosIptables := false
-	if v, ok := bootstrapInfo["SkipVyosIptables"]; ok {
-		SkipVyosIptables = v.(bool)
+	/* skipVyosIptables is a flag to indicate how to configure firewall and nat */
+	skipVyosIptables := false
+	if v, ok := bootstrapInfo["skipVyosIptables"]; ok {
+		skipVyosIptables = v.(bool)
 	}
 	log.Debugf("bootstrapInfo %+v", bootstrapInfo)
-	log.Debugf("SkipVyosIptables %+v", SkipVyosIptables)
+	log.Debugf("skipVyosIptables %+v", skipVyosIptables)
 
-	if SkipVyosIptables {
+	if skipVyosIptables {
 		for _, nic := range nics {
 			var err error
 			setNic(nic)
@@ -434,10 +458,13 @@ func configureVyos() {
 		log.Debugf("can not get management node ip from bootstrap info, skip to config route")
 	} else {
 		mgmtNodeIpStr := mgmtNodeIp.(string)
+		log.Debugf("mgmtNodeIpStr: %s", mgmtNodeIpStr)
 		if utils.CheckMgmtCidrContainsIp(mgmtNodeIpStr, mgmtNic) == false {
+			log.Debugf("not contain")
 			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
 			utils.PanicOnError(err)
 		} else if utils.GetNicForRoute(mgmtNodeIpStr) != "eth0" {
+			log.Debugf("not eth0")
 			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", "")
 			utils.PanicOnError(err)
 		} else {
@@ -454,7 +481,8 @@ func configureVyos() {
 		ret, _, _, err := bash.RunWithReturn()
 		if err == nil && ret != 0 {
 			tree := server.NewParserFromShowConfiguration().Tree
-			tree.Deletef("system gateway-address %v", defaultGW)
+			//tree.Deletef("system gateway-address %v", defaultGW)
+			tree.Deletef("protocols static route 0.0.0.0/0")
 			tree.Apply(true)
 			b := utils.Bash{
 				Command: fmt.Sprintf("ip route add default via %s dev %s", defaultGW, defaultNic),
@@ -482,7 +510,8 @@ func main() {
 		waitVirtioPortOnline()
 		parseKvmBootInfo()
 	}
+
 	configureVyos()
-	//startZvr()
+	startZvr()
 	log.Debugf("successfully configured the sysmtem and bootstrap the zstack virtual router agents")
 }

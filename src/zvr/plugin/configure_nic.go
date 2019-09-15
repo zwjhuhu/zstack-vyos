@@ -53,7 +53,7 @@ func configureNic(ctx *server.CommandContext) interface{} {
 		addr := fmt.Sprintf("%v/%v", nic.Ip, cidr)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s address %v", nicname, addr)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s duplex auto", nicname)
-		tree.SetfWithoutCheckExisting("interfaces ethernet %s smp_affinity auto", nicname)
+		//tree.SetfWithoutCheckExisting("interfaces ethernet %s smp_affinity auto", nicname)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s speed auto", nicname)
 
 		if utils.IsSkipVyosIptables() {
@@ -176,7 +176,7 @@ func removeNic(ctx *server.CommandContext) interface{} {
 			}
 		}, 5, 1)
 		utils.PanicOnError(err)
-		tree.Deletef("interfaces ethernet %s", nicname)
+		tree.Deletef("interfaces ethernet %s address", nicname)
 		if utils.IsSkipVyosIptables() {
 			utils.DestroyNicFirewall(nicname)
 		} else {
