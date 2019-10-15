@@ -11,8 +11,9 @@ import (
 	"github.com/pkg/errors"
 )
 
-var (
+const (
 	HEADER_TRIGGER_URL = "TriggerURL"
+	HEADER_ROUTERID    = "routerid"
 )
 
 func HttpPostWithoutHeaders(url string, obj interface{}) ([]byte, error) {
