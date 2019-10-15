@@ -37,6 +37,16 @@ func IsSkipVyosIptables() bool {
 	return SkipVyosIptables
 }
 
+// 增加一个routerid表示与路由虚机的id
+func GetRouterid() string {
+	routerid, ok := bootstrapInfo["routerid"].(string)
+	if !ok {
+		return ""
+	}
+
+	return routerid
+}
+
 func InitBootStrapInfo() {
 	content, err := ioutil.ReadFile(BOOTSTRAP_INFO_CACHE)
 	PanicOnError(err)
