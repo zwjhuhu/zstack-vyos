@@ -15,8 +15,8 @@ import (
 
 const (
 	ZSTACK_ROUTE_PROTO = "zstack"
-	//ZSTACK_ROUTE_PROTO_IDENTIFFER = "192" conflict
-	ZSTACK_ROUTE_PROTO_IDENTIFFER = "292"
+	//ZSTACK_ROUTE_PROTO_IDENTIFFER = "192" conflict with eigrp
+	ZSTACK_ROUTE_PROTO_IDENTIFFER = "199"
 )
 
 func NetmaskToCIDR(netmask string) (int, error) {
@@ -164,7 +164,7 @@ func GetIpFromUrl(url string) (string, error) {
 
 func CheckZStackRouteExists(ip string) bool {
 	bash := Bash{
-		Command: fmt.Sprintf("ip r list %s/32 proto zstack", ip),
+		Command: fmt.Sprintf("ip r list %s/32 proto %s", ip, ZSTACK_ROUTE_PROTO),
 	}
 	_, o, _, _ := bash.RunWithReturn()
 	if o == "" {

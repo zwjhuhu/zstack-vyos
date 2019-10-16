@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	VIRTIO_PORT_PATH     = "/dev/virtio-ports/applianceVm.vport"
+	VIRTIO_PORT_PATH     = "/dev/virtio-ports/applianceVm.port"
 	BOOTSTRAP_INFO_CACHE = "/home/vyos/zvr/bootstrap-info.json"
 	TMP_LOCATION_FOR_ESX = "/tmp/bootstrap-info.json"
 	// use this rule number to set a rule which confirm route entry work issue ZSTAC-6170

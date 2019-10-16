@@ -1,6 +1,5 @@
-<domain type='kvm' id='1'>
-  <name>voys-agent</name>
-  <uuid>650646e8-c17a-49d0-b83c-1c797811e011</uuid>
+<domain type='kvm'>
+  <name>vyos-agent</name>
   <memory unit='KiB'>1048576</memory>
   <currentMemory unit='KiB'>1048576</currentMemory>
   <vcpu placement='static'>1</vcpu>
@@ -37,7 +36,7 @@
     <emulator>/usr/libexec/qemu-kvm</emulator>
     <disk type='file' device='disk'>
       <driver name='qemu' type='qcow2'/>
-      <source file='/var/lib/libvirt/images/voys-agent.qcow2'/>
+      <source file='/var/lib/libvirt/storagepool1/vyos-agent.qcow2'/>
       <backingStore/>
       <target dev='vda' bus='virtio'/>
       <alias name='virtio-disk0'/>
@@ -71,24 +70,37 @@
     </controller>
     <interface type='bridge'>
       <mac address='52:54:00:10:36:93'/>
-      <source bridge='br0'/>
-      <target dev='vnet0'/>
+      <source bridge='br-native'/>
+      <virtualport type='openvswitch'>
+        <parameters interfaceid='917c445e-6a7f-4387-96a2-8370844d1631'/>
+      </virtualport>
+      <bandwidth>
+        <inbound average='102400'/>
+        <outbound average='102400'/>
+      </bandwidth>
+      <target dev='fe5400103693'/>
       <model type='virtio'/>
       <alias name='net0'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x08' function='0x0'/>
     </interface>
-	<interface type='bridge'>
+    <interface type='bridge'>
       <mac address='52:54:00:10:36:94'/>
-      <source bridge='vbr1'/>
-      <target dev='vnet1'/>
+      <source bridge='br-test'/>
+      <virtualport type='openvswitch'>
+        <parameters interfaceid='5396281c-4511-425a-89aa-8c821ad02251'/>
+      </virtualport>
+      <target dev='fe5400103694'/>
       <model type='virtio'/>
       <alias name='net1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x09' function='0x0'/>
     </interface>
-	<interface type='bridge'>
+    <interface type='bridge'>
       <mac address='52:54:00:10:36:95'/>
-      <source bridge='vbr2'/>
-      <target dev='vnet2'/>
+      <source bridge='vx100'/>
+      <virtualport type='openvswitch'>
+        <parameters interfaceid='3003929a-17e9-40d0-b1fa-0727138c8c2d'/>
+      </virtualport>
+      <target dev='fe5400103695'/>
       <model type='virtio'/>
       <alias name='net2'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x0a' function='0x0'/>
@@ -107,7 +119,7 @@
     </console>
     <channel type='unix'>
       <source mode='bind' path='/var/lib/hostagent/applianceVm.voys-test'/>
-      <target type='virtio' name='applianceVm.port' state='disconnected'/>
+      <target type='virtio' name='applianceVm.vport' state='disconnected'/>
       <alias name='channel0'/>
       <address type='virtio-serial' controller='0' bus='0' port='1'/>
     </channel>
