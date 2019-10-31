@@ -67,6 +67,7 @@ else
 	exit
 fi
 
+save
 `
 
 func FindNicNameByMacFromConfiguration(mac, configuration string) (string, bool) {
