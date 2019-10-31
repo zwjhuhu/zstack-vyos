@@ -64,10 +64,10 @@ if [ $? -ne 0 ]; then
 	echo "fail to commit"
 	exit 1
 else
+    save
 	exit
 fi
 
-save
 `
 
 func FindNicNameByMacFromConfiguration(mac, configuration string) (string, bool) {
