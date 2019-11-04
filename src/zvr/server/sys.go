@@ -64,7 +64,6 @@ if [ $? -ne 0 ]; then
 	echo "fail to commit"
 	exit 1
 else
-    save
 	exit
 fi
 
