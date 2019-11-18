@@ -461,7 +461,9 @@ func configureVyos() {
 		log.Debugf("mgmtNodeIpStr: %s", mgmtNodeIpStr)
 		if utils.CheckMgmtCidrContainsIp(mgmtNodeIpStr, mgmtNic) == false {
 			log.Debugf("not contain")
-			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
+			// use eth0 anyway because eth0 must be connected to a bridge of host
+			// err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
+			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", "")
 			utils.PanicOnError(err)
 		} else if utils.GetNicForRoute(mgmtNodeIpStr) != "eth0" {
 			log.Debugf("not eth0")
