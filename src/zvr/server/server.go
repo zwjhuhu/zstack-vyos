@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 	"zvr/utils"
 
@@ -41,6 +42,14 @@ func (ctx *CommandContext) GetCommand(cmd interface{}) {
 	if err := utils.JsonDecodeHttpRequest(ctx.request, cmd); err != nil {
 		panic(err)
 	}
+}
+
+func (ctx *CommandContext) GetRemoteIp() (ip string) {
+	ip = ""
+	if tmp := ctx.request.RemoteAddr; tmp != "" {
+		ip = strings.Split(tmp, ":")[0]
+	}
+	return
 }
 
 type CommandHandler func(ctx *CommandContext) interface{}
