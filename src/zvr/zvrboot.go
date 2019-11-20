@@ -473,6 +473,20 @@ func configureVyos() {
 			log.Debugf("the cidr of vr mgmt contains callback ip, skip to configure route")
 		}
 	}
+	// other routers via eth0
+	otherRouters := bootstrapInfo["otherRouters"]
+	if otherRouters != nil {
+		otherIps, ok := otherRouters.([]string)
+		if !ok {
+			for _, ip := range otherIps {
+				if utils.GetNicForRoute(ip) != "eth0" {
+					log.Debugf("not eth0")
+					err := utils.SetZStackRoute(ip, "eth0", "")
+					utils.PanicOnError(err)
+				}
+			}
+		}
+	}
 	/* this is workaround for zstac*/
 	log.Debugf("the vr public network %s at %s", defaultGW, defaultNic)
 	if defaultGW != "" {
