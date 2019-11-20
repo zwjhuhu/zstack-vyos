@@ -476,14 +476,13 @@ func configureVyos() {
 	// other routers via eth0
 	otherRouters := bootstrapInfo["otherRouters"]
 	if otherRouters != nil {
-		otherIps, ok := otherRouters.([]string)
-		if !ok {
-			for _, ip := range otherIps {
-				if utils.GetNicForRoute(ip) != "eth0" {
-					log.Debugf("not eth0")
-					err := utils.SetZStackRoute(ip, "eth0", "")
-					utils.PanicOnError(err)
-				}
+		otherIps := otherRouters.([]interface{})
+		for _, ipi := range otherIps {
+			ip, ok := ipi.(string)
+			if ok && utils.GetNicForRoute(ip) != "eth0" {
+				log.Debugf("not eth0")
+				err := utils.SetZStackRoute(ip, "eth0", "")
+				utils.PanicOnError(err)
 			}
 		}
 	}
