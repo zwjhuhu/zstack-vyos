@@ -1,21 +1,23 @@
 package plugin
 
 import (
+	"fmt"
+	"strings"
 	"zvr/server"
 	"zvr/utils"
-	"fmt"
+
 	"github.com/pkg/errors"
 )
 
 const (
 	SYNC_ROUTES = "/syncroutes"
-	GET_ROUTES = "/getroutes"
+	GET_ROUTES  = "/getroutes"
 )
 
 type routeInfo struct {
 	Destination string `json:"destination"`
 	Target      string `json:"target"`
-	Distance      int `json:"distance"`
+	Distance    int    `json:"distance"`
 }
 
 type SyncRoutesCmd struct {
@@ -38,7 +40,9 @@ func setRoutes(infos []routeInfo) {
 	tree := server.NewParserFromShowConfiguration().Tree
 	if rs := tree.Get("protocols static route"); rs != nil {
 		for _, r := range rs.Children() {
-			r.Delete()
+			if !strings.Contains(r.String(), "0.0.0.0/0") {
+				r.Delete()
+			}
 		}
 	}
 
@@ -55,17 +59,18 @@ func setRoutes(infos []routeInfo) {
 
 func getRoutes(ctx *server.CommandContext) interface{} {
 	// Note(WeiW): add "vtysh -c "show ip route " >/dev/null" to get correct return code
-	bash := utils.Bash {
+	bash := utils.Bash{
 		Command: fmt.Sprintf("vtysh -c 'show ip route' | tail -n +4; vtysh -c 'show ip route' >/dev/null"),
 	}
-	ret, o, _, err := bash.RunWithReturn(); utils.PanicOnError(err)
+	ret, o, _, err := bash.RunWithReturn()
+	utils.PanicOnError(err)
 	if ret != 0 {
 		utils.PanicOnError(errors.Errorf(("get route from zebra error")))
 	}
-	return GetRoutesRsp{ RawRoutes: o }
+	return GetRoutesRsp{RawRoutes: o}
 }
 
-func RouteEntryPoint()  {
+func RouteEntryPoint() {
 	server.RegisterAsyncCommandHandler(SYNC_ROUTES, server.VyosLock(syncRoutes))
 	server.RegisterAsyncCommandHandler(GET_ROUTES, server.VyosLock(getRoutes))
 }
