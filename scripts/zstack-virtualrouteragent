@@ -49,9 +49,9 @@ server_status() {
     ret=$?
     if [ $ret -eq 0 ]; then
         pid=$(get_pid)
-        echo "zstack virtual router agent [PID:$pid] is running"
+        echo "virtual router agent [PID:$pid] is running"
     elif [ $ret -eq 1 ]; then
-        echo "zstack virtual router agent is stopped"
+        echo "virtual router agent is stopped"
     fi
 
     exit $ret
@@ -84,7 +84,7 @@ do_start() {
         fi
     done
 
-    check_status > /dev/null || err_exit "unable to start zstack virtual router agent"
+    check_status > /dev/null || err_exit "unable to start virtual router agent"
 
     exit 0
 }
@@ -94,7 +94,7 @@ start_server() {
     ret=$?
     if [ $ret -eq 0 ]; then
         pid=$(get_pid)
-        echo "zstack virtual router agent [PID:$pid] is running already"
+        echo "virtual router agent [PID:$pid] is running already"
     elif [ $ret -eq 1 ]; then
         do_start ""
     fi
@@ -116,7 +116,7 @@ stop_server() {
     check_status
     ret=$?
     if [ $ret -ne 0 ]; then
-        echo "zstack virtual router agent stopped already"
+        echo "virtual router agent stopped already"
 	return
     fi
     (
