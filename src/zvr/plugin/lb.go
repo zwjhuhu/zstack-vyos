@@ -254,7 +254,7 @@ server nic-{{$ip}} {{$ip}}:{{$.InstancePort}} check port {{$.CheckPort}} inter {
 	utils.PanicOnError(err)
 	err = utils.MkdirForFile(this.confPath, 0755)
 	utils.PanicOnError(err)
-	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755)
+	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0644)
 	utils.PanicOnError(err)
 	LbListeners[this.lb.ListenerUuid] = this
 	return err
@@ -474,7 +474,7 @@ max_responses = 0    # (required) if > 0 accepts no more responses that max_resp
 	utils.PanicOnError(err)
 	err = utils.MkdirForFile(this.confPath, 0755)
 	utils.PanicOnError(err)
-	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0755)
+	err = ioutil.WriteFile(this.confPath, buf.Bytes(), 0644)
 	utils.PanicOnError(err)
 	LbListeners[this.lb.ListenerUuid] = this
 	return err
@@ -810,7 +810,7 @@ func createCertificate(ctx *server.CommandContext) interface{} {
 
 	err := utils.MkdirForFile(certificatePath, 0755)
 	utils.PanicOnError(err)
-	err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0755)
+	err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0644)
 	utils.PanicOnError(err)
 
 	return nil
