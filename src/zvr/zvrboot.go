@@ -510,7 +510,7 @@ func configureVyos() {
 
 func startZvr() {
 	b := utils.Bash{
-		Command: "bash -x /etc/init.d/zstack-virtualrouteragent restart >> /tmp/agentRestart.log 2>&1",
+		Command: "bash -x /etc/init.d/virtualrouteragent restart >> /tmp/agentRestart.log 2>&1",
 	}
 	b.Run()
 	b.PanicIfError()
@@ -528,5 +528,5 @@ func main() {
 
 	configureVyos()
 	startZvr()
-	log.Debugf("successfully configured the sysmtem and bootstrap the zstack virtual router agents")
+	log.Debugf("successfully configured the sysmtem and bootstrap the vrouter virtual router agents")
 }

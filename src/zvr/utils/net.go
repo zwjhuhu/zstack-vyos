@@ -242,14 +242,14 @@ func RemoveVrouterRoute(ip string) error {
 
 func SetVrouterRouteProtoIdentifier() {
 	bash := Bash{
-		Command: "grep zstack /etc/iproute2/rt_protos",
+		Command: "grep vrouter /etc/iproute2/rt_protos",
 	}
 	check, _, _, _ := bash.RunWithReturn()
 
 	if check != 0 {
-		log.Debugf("no route proto zstack in /etc/iproute2/rt_protos")
+		log.Debugf("no route proto vrouter in /etc/iproute2/rt_protos")
 		bash = Bash{
-			Command: fmt.Sprintf("sudo bash -c \"echo -e '\n\n# Used by zstack\n%s     zstack' >> /etc/iproute2/rt_protos\"", VROUTER_ROUTE_PROTO_IDENTIFFER),
+			Command: fmt.Sprintf("sudo bash -c \"echo -e '\n\n# Used by vrouter\n%s     vrouter' >> /etc/iproute2/rt_protos\"", VROUTER_ROUTE_PROTO_IDENTIFFER),
 		}
 		bash.Run()
 	}

@@ -13,8 +13,8 @@ TARGET_BIN=/opt/vyatta/sbin/zvr
 cp -f zvr $TARGET_BIN
 chmod +x $TARGET_BIN
 chown vyos:users $TARGET_BIN
-cp -f zstack-virtualrouteragent /etc/init.d
-chmod +x /etc/init.d/zstack-virtualrouteragent
+cp -f virtualrouteragent /etc/init.d
+chmod +x /etc/init.d/virtualrouteragent
 
 TARGET_HAPROXY=/opt/vyatta/sbin/haproxy
 diff haproxy $TARGET_HAPROXY
