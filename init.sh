@@ -12,7 +12,7 @@ fi
 tmpdir=$(mktemp -d)
 ZVR=$tmpdir/zvr
 ZVRBOOT=$tmpdir/zvrboot
-ZVRSCRIPT=$tmpdir/zstack-virtualrouteragent
+ZVRSCRIPT=$tmpdir/virtualrouteragent
 HAPROXY=$tmpdir/haproxy
 GOBETWEEN=$tmpdir/gobetween
 HEALTHCHECK=$tmpdir/healthcheck.sh
@@ -28,7 +28,7 @@ tar xzf $SOURCERTAR -C $tmpdir
 echo "$VERSION" > /etc/version
 cp -f $ZVR $SBIN_DIR/zvr
 cp -f $ZVRBOOT $SBIN_DIR/zvrboot
-cp -f $ZVRSCRIPT /etc/init.d/zstack-virtualrouteragent
+cp -f $ZVRSCRIPT /etc/init.d/virtualrouteragent
 cp -f $HAPROXY $SBIN_DIR/haproxy
 cp -f $GOBETWEEN $SBIN_DIR/gobetween
 mkdir -p /home/vyos/zvr/
@@ -37,7 +37,7 @@ cp -f $HEALTHCHECK /usr/share/healthcheck.sh
 
 chmod +x $SBIN_DIR/zvrboot
 chmod +x $SBIN_DIR/zvr
-chmod +x /etc/init.d/zstack-virtualrouteragent
+chmod +x /etc/init.d/virtualrouteragent
 chmod +x $SBIN_DIR/haproxy
 chmod +x $SBIN_DIR/gobetween
 chmod +x /usr/share/healthcheck.sh

@@ -30,7 +30,7 @@ package: clean zvr zvrboot
 	mkdir -p $(PKG_ZVR_DIR)
 	mkdir -p $(PKG_ZVRBOOT_DIR)
 	cp -f $(TARGET_DIR)/zvr $(PKG_ZVR_DIR)
-	cp -f scripts/zstack-virtualrouteragent $(PKG_ZVR_DIR)
+	cp -f scripts/virtualrouteragent $(PKG_ZVR_DIR)
 	cp -f scripts/haproxy $(PKG_ZVR_DIR)
 	cp -f scripts/gobetween $(PKG_ZVR_DIR)
 	cp -f scripts/healthcheck.sh $(PKG_ZVR_DIR)
@@ -45,7 +45,7 @@ tar: zvr zvrboot
 	cp -f scripts/haproxy $(PKG_TAR_DIR)
 	cp -f scripts/gobetween $(PKG_TAR_DIR)
 	cp -f scripts/healthcheck.sh $(PKG_TAR_DIR)
-	cp -f scripts/zstack-virtualrouteragent $(PKG_TAR_DIR)
+	cp -f scripts/virtualrouteragent $(PKG_TAR_DIR)
 	cp -f scripts/version $(PKG_TAR_DIR)
 	cp -f $(TARGET_DIR)/zvrboot $(PKG_TAR_DIR)
 	tar czf $(TARGET_DIR)/zvr.tar.gz -C $(PKG_TAR_DIR) .
