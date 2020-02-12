@@ -115,7 +115,7 @@ func apvmEchoHandler(ctx *server.CommandContext) interface{} {
 	remoteIp := ctx.GetRemoteIp()
 	if utils.GetNicForRoute(remoteIp) != "eth0" {
 		log.Debugf("%s not route by eth0", remoteIp)
-		err := utils.SetZStackRoute(remoteIp, "eth0", "")
+		err := utils.SetVrouterRoute(remoteIp, "eth0", "")
 		utils.PanicOnError(err)
 	}
 	return nil

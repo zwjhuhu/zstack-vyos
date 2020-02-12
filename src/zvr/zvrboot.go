@@ -462,12 +462,12 @@ func configureVyos() {
 		if utils.CheckMgmtCidrContainsIp(mgmtNodeIpStr, mgmtNic) == false {
 			log.Debugf("not contain")
 			// use eth0 anyway because eth0 must be connected to a bridge of host
-			// err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
-			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", "")
+			// err := utils.SetVrouterRoute(mgmtNodeIpStr, "eth0", mgmtNic["gateway"].(string))
+			err := utils.SetVrouterRoute(mgmtNodeIpStr, "eth0", "")
 			utils.PanicOnError(err)
 		} else if utils.GetNicForRoute(mgmtNodeIpStr) != "eth0" {
 			log.Debugf("not eth0")
-			err := utils.SetZStackRoute(mgmtNodeIpStr, "eth0", "")
+			err := utils.SetVrouterRoute(mgmtNodeIpStr, "eth0", "")
 			utils.PanicOnError(err)
 		} else {
 			log.Debugf("the cidr of vr mgmt contains callback ip, skip to configure route")
@@ -481,7 +481,7 @@ func configureVyos() {
 			ip, ok := ipi.(string)
 			if ok && utils.GetNicForRoute(ip) != "eth0" {
 				log.Debugf("not eth0")
-				err := utils.SetZStackRoute(ip, "eth0", "")
+				err := utils.SetVrouterRoute(ip, "eth0", "")
 				utils.PanicOnError(err)
 			}
 		}

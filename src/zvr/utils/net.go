@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	ZSTACK_ROUTE_PROTO = "zstack"
+	VROUTER_ROUTE_PROTO = "vrouter"
 	//ZSTACK_ROUTE_PROTO_IDENTIFFER = "192" conflict with eigrp
-	ZSTACK_ROUTE_PROTO_IDENTIFFER = "199"
+	VROUTER_ROUTE_PROTO_IDENTIFFER = "199"
 )
 
 func NetmaskToCIDR(netmask string) (int, error) {
@@ -162,9 +162,9 @@ func GetIpFromUrl(url string) (string, error) {
 	return ip, nil
 }
 
-func CheckZStackRouteExists(ip string) bool {
+func CheckVrouterRouteExists(ip string) bool {
 	bash := Bash{
-		Command: fmt.Sprintf("ip r list %s/32 proto %s", ip, ZSTACK_ROUTE_PROTO),
+		Command: fmt.Sprintf("ip r list %s/32 proto %s", ip, VROUTER_ROUTE_PROTO),
 	}
 	_, o, _, _ := bash.RunWithReturn()
 	if o == "" {
@@ -174,7 +174,7 @@ func CheckZStackRouteExists(ip string) bool {
 }
 
 func DeleteRouteIfExists(ip string) error {
-	if CheckZStackRouteExists(ip) == true {
+	if CheckVrouterRouteExists(ip) == true {
 		bash := Bash{
 			Command: fmt.Sprintf("ip route del %s/32", ip),
 		}
@@ -187,18 +187,18 @@ func DeleteRouteIfExists(ip string) error {
 	return nil
 }
 
-func SetZStackRoute(ip string, nic string, gw string) error {
-	SetZStackRouteProtoIdentifier()
+func SetVrouterRoute(ip string, nic string, gw string) error {
+	SetVrouterRouteProtoIdentifier()
 	DeleteRouteIfExists(ip)
 
 	var bash Bash
 	if gw == "" {
 		bash = Bash{
-			Command: fmt.Sprintf("ip route add %s/32 dev %s proto %s", ip, nic, ZSTACK_ROUTE_PROTO),
+			Command: fmt.Sprintf("ip route add %s/32 dev %s proto %s", ip, nic, VROUTER_ROUTE_PROTO),
 		}
 	} else {
 		bash = Bash{
-			Command: fmt.Sprintf("ip route add %s/32 via %s dev %s proto %s", ip, gw, nic, ZSTACK_ROUTE_PROTO),
+			Command: fmt.Sprintf("ip route add %s/32 via %s dev %s proto %s", ip, gw, nic, VROUTER_ROUTE_PROTO),
 		}
 	}
 
@@ -224,23 +224,23 @@ func GetNicForRoute(ip string) string {
 	return o
 }
 
-func RemoveZStackRoute(ip string) error {
-	SetZStackRouteProtoIdentifier()
+func RemoveVrouterRoute(ip string) error {
+	SetVrouterRouteProtoIdentifier()
 	bash := Bash{
-		Command: fmt.Sprintf("ip route del %s/32 proto %s", ip, ZSTACK_ROUTE_PROTO),
+		Command: fmt.Sprintf("ip route del %s/32 proto %s", ip, VROUTER_ROUTE_PROTO),
 	}
 	ret, _, _, err := bash.RunWithReturn()
 	if err != nil {
 		return err
 	}
 	if ret != 0 {
-		return errors.New(fmt.Sprintf("del route to %s/32 proto %s failed", ip, ZSTACK_ROUTE_PROTO))
+		return errors.New(fmt.Sprintf("del route to %s/32 proto %s failed", ip, VROUTER_ROUTE_PROTO))
 	}
 
 	return nil
 }
 
-func SetZStackRouteProtoIdentifier() {
+func SetVrouterRouteProtoIdentifier() {
 	bash := Bash{
 		Command: "grep zstack /etc/iproute2/rt_protos",
 	}
@@ -249,7 +249,7 @@ func SetZStackRouteProtoIdentifier() {
 	if check != 0 {
 		log.Debugf("no route proto zstack in /etc/iproute2/rt_protos")
 		bash = Bash{
-			Command: fmt.Sprintf("sudo bash -c \"echo -e '\n\n# Used by zstack\n%s     zstack' >> /etc/iproute2/rt_protos\"", ZSTACK_ROUTE_PROTO_IDENTIFFER),
+			Command: fmt.Sprintf("sudo bash -c \"echo -e '\n\n# Used by zstack\n%s     zstack' >> /etc/iproute2/rt_protos\"", VROUTER_ROUTE_PROTO_IDENTIFFER),
 		}
 		bash.Run()
 	}
