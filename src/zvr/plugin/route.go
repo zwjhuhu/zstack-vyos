@@ -60,7 +60,7 @@ func setRoutes(infos []routeInfo) {
 func getRoutes(ctx *server.CommandContext) interface{} {
 	// Note(WeiW): add "vtysh -c "show ip route " >/dev/null" to get correct return code
 	bash := utils.Bash{
-		Command: fmt.Sprintf("vtysh -c 'show ip route' | tail -n +4; vtysh -c 'show ip route' >/dev/null"),
+		Command: fmt.Sprintf("vtysh -c 'show ip route' | tail -n +7; vtysh -c 'show ip route' >/dev/null"),
 	}
 	ret, o, _, err := bash.RunWithReturn()
 	utils.PanicOnError(err)
