@@ -416,8 +416,8 @@ enabled = true  # true | false
 bind = ":{{.ApiPort}}"  # bind host:port
 [logging]
 level = "debug"   # "debug" | "info" | "warn" | "error"
-#output = "/var/log/gobetween_{{.ListenerUuid}}.log" # "stdout" | "stderr" | "/path/to/gobetween.log"
-output = "/var/log/gobetween.log"
+output = "/var/log/gobetween_{{.ListenerUuid}}.log" # "stdout" | "stderr" | "/path/to/gobetween.log"
+#output = "/var/log/gobetween.log"
 
 [servers.{{.ListenerUuid}}]
 bind = "{{.Vip}}:{{.LoadBalancerPort}}"
@@ -436,24 +436,24 @@ max_requests  = 0     # (optional) if > 0 accepts no more requests than max_requ
 max_responses = 0    # (required) if > 0 accepts no more responses that max_responses from backend and closes session (will be optional since 0.5.0)
 
 
-    [servers.{{.ListenerUuid}}.discovery]
-    kind = "static"
-    failpolicy = "keeplast"
-    static_list = [
-	{{ range $index, $ip := .NicIps }}
-      "{{$ip}}:{{$.CheckPort}}",
-    {{ end }}
-    ]
+[servers.{{.ListenerUuid}}.discovery]
+kind = "static"
+failpolicy = "keeplast"
+static_list = [
+{{ range $index, $ip := .NicIps }}
+  "{{$ip}}:{{$.CheckPort}}",
+{{ end }}
+]
 
-    [servers.{{.ListenerUuid}}.healthcheck]
-    fails = {{$.UnhealthyThreshold}}
-    passes = {{$.HealthyThreshold}}
-    interval = "{{$.HealthCheckInterval}}s"
-    timeout = "{{$.HealthCheckTimeout}}s"
-    kind = "exec"
-    exec_command = "/usr/share/healthcheck.sh"  # (required) command to execute
-    exec_expected_positive_output = "success"           # (required) expected output of command in case of success
-    exec_expected_negative_output = "fail"
+[servers.{{.ListenerUuid}}.healthcheck]
+fails = {{$.UnhealthyThreshold}}
+passes = {{$.HealthyThreshold}}
+interval = "{{$.HealthCheckInterval}}s"
+timeout = "{{$.HealthCheckTimeout}}s"
+kind = "exec"
+exec_command = "/usr/share/healthcheck.sh"  # (required) command to execute
+exec_expected_positive_output = "success"           # (required) expected output of command in case of success
+exec_expected_negative_output = "fail"
 `
 
 	var buf bytes.Buffer
