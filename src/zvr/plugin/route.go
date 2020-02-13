@@ -10,8 +10,10 @@ import (
 )
 
 const (
-	SYNC_ROUTES = "/syncroutes"
-	GET_ROUTES  = "/getroutes"
+	ADD_ROUTES    = "/addroutes"
+	REMOVE_ROUTES = "/removeroutes"
+	SYNC_ROUTES   = "/syncroutes"
+	GET_ROUTES    = "/getroutes"
 )
 
 type routeInfo struct {
@@ -40,17 +42,54 @@ func setRoutes(infos []routeInfo) {
 	tree := server.NewParserFromShowConfiguration().Tree
 	if rs := tree.Get("protocols static route"); rs != nil {
 		for _, r := range rs.Children() {
-			if !strings.Contains(r.String(), "0.0.0.0/0") {
+			if !strings.Contains(r.String(), "0.0.0.0") {
 				r.Delete()
 			}
 		}
 	}
 
 	for _, route := range infos {
-		if route.Target == "" {
+		if route.Target == "" && route.Destination != "" && !strings.Contains(route.Destination, "0.0.0.0") {
 			tree.Setf("protocols static route %s blackhole distance %d", route.Destination, route.Distance)
 		} else {
 			tree.Setf("protocols static route %s next-hop %s distance %d", route.Destination, route.Target, route.Distance)
+		}
+	}
+
+	tree.Apply(false)
+}
+
+func addRoutes(infos []routeInfo) {
+	tree := server.NewParserFromShowConfiguration().Tree
+
+	for _, route := range infos {
+
+		if route.Target == "" && route.Destination != "" && !strings.Contains(route.Destination, "0.0.0.0") {
+			part := "protocols static route %s blackhole distance %d"
+			if tree.Has(fmt.Sprintf(part, route.Destination, route.Distance)) {
+				tree.Deletef(part, route.Destination, route.Distance)
+			}
+			tree.Setf(part, route.Destination, route.Distance)
+		} else {
+			part := "protocols static route %s next-hop %s distance %d"
+			if tree.Has(fmt.Sprintf(part, route.Destination, route.Target, route.Distance)) {
+				tree.Deletef(part, route.Destination, route.Target, route.Distance)
+			}
+			tree.Setf(part, route.Destination, route.Target, route.Distance)
+		}
+	}
+
+	tree.Apply(false)
+}
+
+func removeRoutes(infos []routeInfo) {
+	tree := server.NewParserFromShowConfiguration().Tree
+
+	for _, route := range infos {
+		if route.Target == "" && route.Destination != "" && !strings.Contains(route.Destination, "0.0.0.0") {
+			tree.Deletef("protocols static route %s blackhole distance %d", route.Destination, route.Distance)
+		} else {
+			tree.Deletef("protocols static route %s next-hop %s distance %d", route.Destination, route.Target, route.Distance)
 		}
 	}
 
@@ -71,6 +110,8 @@ func getRoutes(ctx *server.CommandContext) interface{} {
 }
 
 func RouteEntryPoint() {
+	server.RegisterAsyncCommandHandler(ADD_ROUTES, server.VyosLock(addRoutes))
+	server.RegisterAsyncCommandHandler(REMOVE_ROUTES, server.VyosLock(removeRoutes))
 	server.RegisterAsyncCommandHandler(SYNC_ROUTES, server.VyosLock(syncRoutes))
 	server.RegisterAsyncCommandHandler(GET_ROUTES, server.VyosLock(getRoutes))
 }
