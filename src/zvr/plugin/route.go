@@ -38,6 +38,22 @@ func syncRoutes(ctx *server.CommandContext) interface{} {
 	return nil
 }
 
+func addRoutes(ctx *server.CommandContext) interface{} {
+	cmd := &SyncRoutesCmd{}
+	ctx.GetCommand(cmd)
+
+	doAddRoutes(cmd.Routes)
+	return nil
+}
+
+func removeRoutes(ctx *server.CommandContext) interface{} {
+	cmd := &SyncRoutesCmd{}
+	ctx.GetCommand(cmd)
+
+	doRemoveRoutes(cmd.Routes)
+	return nil
+}
+
 func setRoutes(infos []routeInfo) {
 	tree := server.NewParserFromShowConfiguration().Tree
 	if rs := tree.Get("protocols static route"); rs != nil {
@@ -59,7 +75,7 @@ func setRoutes(infos []routeInfo) {
 	tree.Apply(false)
 }
 
-func addRoutes(infos []routeInfo) {
+func doAddRoutes(infos []routeInfo) {
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	for _, route := range infos {
@@ -82,7 +98,7 @@ func addRoutes(infos []routeInfo) {
 	tree.Apply(false)
 }
 
-func removeRoutes(infos []routeInfo) {
+func doRemoveRoutes(infos []routeInfo) {
 	tree := server.NewParserFromShowConfiguration().Tree
 
 	for _, route := range infos {
