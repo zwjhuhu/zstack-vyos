@@ -382,5 +382,5 @@ func syncOspfRulesByIptables(NetworkInfos []networkInfo) {
 
 func OspfEntryPoint() {
 	server.RegisterAsyncCommandHandler(ROUTER_PROTOCOL_REFRESH_OSPF, server.VyosLock(refreshOspf))
-	server.RegisterAsyncCommandHandler(ROUTER_PROTOCOL_GET_OSPF_NEIGHBOR, server.VyosLock(getNeighbors))
+	server.RegisterSyncCommandHandler(ROUTER_PROTOCOL_GET_OSPF_NEIGHBOR, getNeighbors)
 }

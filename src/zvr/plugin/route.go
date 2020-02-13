@@ -129,5 +129,5 @@ func RouteEntryPoint() {
 	server.RegisterAsyncCommandHandler(ADD_ROUTES, server.VyosLock(addRoutes))
 	server.RegisterAsyncCommandHandler(REMOVE_ROUTES, server.VyosLock(removeRoutes))
 	server.RegisterAsyncCommandHandler(SYNC_ROUTES, server.VyosLock(syncRoutes))
-	server.RegisterAsyncCommandHandler(GET_ROUTES, server.VyosLock(getRoutes))
+	server.RegisterSyncCommandHandler(GET_ROUTES, getRoutes)
 }
