@@ -853,22 +853,22 @@ const (
 func NewVipPrometheusCollector() MetricCollector {
 	return &vipCollector{
 		inByteEntry: prom.NewDesc(
-			"zstack_vip_in_bytes",
+			"vrouter_vip_in_bytes",
 			"VIP inbound traffic in bytes",
 			[]string{LABEL_VIP_UUID}, nil,
 		),
 		inPktEntry: prom.NewDesc(
-			"zstack_vip_in_packages",
+			"vrouter_vip_in_packages",
 			"VIP inbound traffic packages",
 			[]string{LABEL_VIP_UUID}, nil,
 		),
 		outByteEntry: prom.NewDesc(
-			"zstack_vip_out_bytes",
+			"vrouter_vip_out_bytes",
 			"VIP outbound traffic in bytes",
 			[]string{LABEL_VIP_UUID}, nil,
 		),
 		outPktEntry: prom.NewDesc(
-			"zstack_vip_out_packages",
+			"vrouter_vip_out_packages",
 			"VIP outbound traffic packages",
 			[]string{LABEL_VIP_UUID}, nil,
 		),

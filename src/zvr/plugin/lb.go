@@ -841,27 +841,27 @@ const (
 func NewLbPrometheusCollector() MetricCollector {
 	return &loadBalancerCollector{
 		statusEntry: prom.NewDesc(
-			"zstack_lb_status",
+			"vrouter_lb_status",
 			"Backend server health status",
 			[]string{LB_LISTENER_UUID, LB_LISTENER_BACKEND_IP}, nil,
 		),
 		curSessionNumEntry: prom.NewDesc(
-			"zstack_lb_cur_session_num",
+			"vrouter_lb_cur_session_num",
 			"Backend server active session number",
 			[]string{LB_LISTENER_UUID, LB_LISTENER_BACKEND_IP}, nil,
 		),
 		inByteEntry: prom.NewDesc(
-			"zstack_lb_in_bytes",
+			"vrouter_lb_in_bytes",
 			"Backend server traffic in bytes",
 			[]string{LB_LISTENER_UUID, LB_LISTENER_BACKEND_IP}, nil,
 		),
 		outByteEntry: prom.NewDesc(
-			"zstack_lb_out_bytes",
+			"vrouter_lb_out_bytes",
 			"Backend server traffic in bytes",
 			[]string{LB_LISTENER_UUID, LB_LISTENER_BACKEND_IP}, nil,
 		),
 		curSessionUsageEntry: prom.NewDesc(
-			"zstack_lb_cur_session_usage",
+			"vrouter_lb_cur_session_usage",
 			"Backend server active session ratio of max session",
 			[]string{LB_LISTENER_UUID}, nil,
 		),
