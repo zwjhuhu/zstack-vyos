@@ -18,11 +18,15 @@ type dnsInfo struct {
 }
 
 type setDnsCmd struct {
-	Dns []dnsInfo `json:"dns"`
+	//Dns []dnsInfo `json:"dns"`
+	Dns    []string `json:"dns"`
+	NicMac []string `json:"nicMac"`
 }
 
 type removeDnsCmd struct {
-	Dns []dnsInfo `json:"dns"`
+	//Dns []dnsInfo `json:"dns"`
+	Dns    []string `json:"dns"`
+	NicMac []string `json:"nicMac"`
 }
 
 type setVpcDnsCmd struct {
@@ -53,25 +57,16 @@ func setDnsHandler(ctx *server.CommandContext) interface{} {
 	cmd := &setDnsCmd{}
 	ctx.GetCommand(cmd)
 
-	dnsByMac := make(map[string][]dnsInfo)
-	for _, info := range cmd.Dns {
-		dns := dnsByMac[info.NicMac]
-		if dns == nil {
-			dns = make([]dnsInfo, 0)
-		}
-		dns = append(dns, info)
-		dnsByMac[info.NicMac] = dns
-	}
-
 	/* delete previous config */
 	tree.Deletef("service dns forwarding")
 
+	tree.Setf("service dns forwarding allow-from 0.0.0.0/0")
 	/* dns is ordered in management node, should not be changed in vyos */
-	for _, info := range cmd.Dns {
-		tree.SetfWithoutCheckExisting("service dns forwarding name-server %s", info.DnsAddress)
+	for _, dns := range cmd.Dns {
+		tree.SetfWithoutCheckExisting("service dns forwarding name-server %s", dns)
 	}
 
-	for mac, _ := range dnsByMac {
+	for _, mac := range cmd.NicMac {
 		eth, err := utils.GetNicNameByMac(mac)
 		utils.PanicOnError(err)
 		ip, err := utils.GetIpByNicName(eth)
@@ -108,8 +103,19 @@ func removeDnsHandler(ctx *server.CommandContext) interface{} {
 	cmd := &removeDnsCmd{}
 	ctx.GetCommand(cmd)
 
-	for _, info := range cmd.Dns {
-		tree.Deletef("service dns forwarding name-server %s", info.DnsAddress)
+	for _, dns := range cmd.Dns {
+		tree.Deletef("service dns forwarding name-server %s", dns)
+	}
+
+	for _, mac := range cmd.NicMac {
+		eth, err := utils.GetNicNameByMac(mac)
+		utils.PanicOnError(err)
+		ip, err := utils.GetIpByNicName(eth)
+		utils.PanicOnError(err)
+
+		if ip != "" {
+			tree.Deletef("service dns forwarding listen-address %s", ip)
+		}
 	}
 
 	tree.Apply(false)
