@@ -52,7 +52,7 @@ type syncIPsecCmd struct {
 	Infos []ipsecInfo `json:"infos"`
 }
 
-type updateIPsecReq struct {
+type updateIPsecCmd struct {
 	Infos []ipsecInfo `json:"infos"`
 }
 
@@ -504,17 +504,15 @@ func updateIPsecConnectionState(tree *server.VyosConfigTree, info ipsecInfo) {
 }
 
 func updateIPsecConnection(ctx *server.CommandContext) interface{} {
-	cmd := &updateIPsecReq{}
+	cmd := &updateIPsecCmd{}
 	ctx.GetCommand(cmd)
 
 	vyos := server.NewParserFromShowConfiguration()
 	tree := vyos.Tree
 
 	for _, info := range cmd.Infos {
-		for _, item := range info.ModifiedItems {
-			if item == "State" {
-				updateIPsecConnectionState(tree, cmd.Infos[0])
-			}
+		if info.PeerAddress != "" && info.State != "" {
+			updateIPsecConnectionState(tree, info)
 		}
 	}
 
