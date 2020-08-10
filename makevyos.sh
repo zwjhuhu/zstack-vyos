@@ -1,5 +1,4 @@
 #!/bin/bash
-BASEDIR=/opt/zstack-vyos
-cd $BASEDIR
+IMGDIR=/home/cz-cloud
 make clean tar
-bash $BASEDIR/mkvyos.sh /opt/vyos-agent.qcow2 $BASEDIR/target/zvr.tar.gz $BASEDIR/init.sh
+bash mkvyos.sh $IMGDIR/vyos-agent.qcow2 target/zvr.tar.gz init.sh

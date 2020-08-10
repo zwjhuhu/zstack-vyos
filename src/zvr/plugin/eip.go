@@ -135,7 +135,7 @@ func setEip(tree *server.VyosConfigTree, eip eipInfo) {
 	des := makeEipDescription(eip)
 	nicname, err := utils.GetNicNameByIp(eip.VipIp)
 	if (nicname == "" || err != nil) && eip.PublicMac != "" {
-		var nicname string
+
 		err = utils.Retry(func() error {
 			var e error
 			nicname, e = utils.GetNicNameByMac(eip.PublicMac)

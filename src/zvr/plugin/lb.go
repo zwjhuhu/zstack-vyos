@@ -61,6 +61,10 @@ type certificateInfo struct {
 	Certificate string `json:"certificate"`
 }
 
+type createCertificateCmd struct {
+	Certificates []certificateInfo `json:"certificates"`
+}
+
 type Listener interface {
 	createListenerServiceConfigure(lb lbInfo) (err error)
 	checkIfListenerServiceUpdate(origChecksum string, currChecksum string) (bool, error)
@@ -799,19 +803,23 @@ func deleteLb(ctx *server.CommandContext) interface{} {
 }
 
 func createCertificate(ctx *server.CommandContext) interface{} {
-	certificate := &certificateInfo{}
-	ctx.GetCommand(certificate)
+	certificateCmd := &createCertificateCmd{}
+	ctx.GetCommand(certificateCmd)
 
-	certificatePath := makeCertificatePath(certificate.Uuid)
-	if e, _ := utils.PathExists(certificatePath); e {
-		/* certificate create api may be called multiple times */
-		return nil
+	for _, certificate := range certificateCmd.Certificates {
+		certificatePath := makeCertificatePath(certificate.Uuid)
+
+		if e, _ := utils.PathExists(certificatePath); e {
+			/* certificate create api may be called multiple times */
+			continue
+		}
+		log.Debugf("certificate file path %s", certificatePath)
+
+		err := utils.MkdirForFile(certificatePath, 0755)
+		utils.PanicOnError(err)
+		err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0644)
+		utils.PanicOnError(err)
 	}
-
-	err := utils.MkdirForFile(certificatePath, 0755)
-	utils.PanicOnError(err)
-	err = ioutil.WriteFile(certificatePath, []byte(certificate.Certificate), 0644)
-	utils.PanicOnError(err)
 
 	return nil
 }

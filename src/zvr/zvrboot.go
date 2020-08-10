@@ -322,6 +322,9 @@ func configureVyos() {
 		tree.Setf("interfaces ethernet %s duplex auto", nic.name)
 		//tree.Setf("interfaces ethernet %s smp_affinity auto", nic.name)
 		tree.Setf("interfaces ethernet %s speed auto", nic.name)
+		// set arp_ignore see https://phabricator.vyos.net/T300
+		tree.Setf("interfaces ethernet %s ip enable-arp-ignore", nic.name)
+
 		if nic.isDefaultRoute {
 			//tree.Setf("system gateway-address %v", nic.gateway)
 			tree.Setf("protocols static route 0.0.0.0/0 next-hop %s", nic.gateway)

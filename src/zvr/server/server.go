@@ -149,6 +149,22 @@ func registerCommandHandler(path string, chandler CommandHandler, async bool) {
 		}
 
 		if !async {
+			defer func() {
+				if err := recover(); err != nil {
+					reply := CommandResponseHeader{
+						Success: false,
+						Error:   fmt.Sprintf("%v", err),
+					}
+
+					if e, ok := err.(error); ok {
+						log.Warnf("%+v\n", errors.Wrap(e, fmt.Sprintf("command[path:%s] failed", path)))
+					} else {
+						log.Warnf("%+v\n", errors.Wrap(errors.New(err.(string)), fmt.Sprintf("command[path:%s] failed", path)))
+					}
+
+					syncReply(reply, w, req)
+				}
+			}()
 			rsp := chandler(ctx)
 			if rsp == nil {
 				rsp = CommandResponseHeader{Success: true}

@@ -1,4 +1,4 @@
-virt-install  --network bridge=vbr2 --virt-type kvm --noautoconsole  \
---graphics vnc,listen=0.0.0.0 --boot hd --name vyc1 --vcpus 1 --memory 256 \
---disk /opt/zstack2.qcow2 \
---os-variant rhel7
+virt-install  --network none --virt-type kvm --noautoconsole  \
+--graphics vnc,listen=0.0.0.0 --boot hd --name vyos --vcpus 1 --memory 1024 \
+--disk /home/cz-cloud/vyos-agent.qcow2 \
+--os-variant debian8

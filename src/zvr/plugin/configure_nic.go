@@ -55,7 +55,8 @@ func configureNic(ctx *server.CommandContext) interface{} {
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s duplex auto", nicname)
 		//tree.SetfWithoutCheckExisting("interfaces ethernet %s smp_affinity auto", nicname)
 		tree.SetfWithoutCheckExisting("interfaces ethernet %s speed auto", nicname)
-
+		// set arp_ignore see https://phabricator.vyos.net/T300
+		tree.Setf("interfaces ethernet %s ip enable-arp-ignore", nicname)
 		if utils.IsSkipVyosIptables() {
 			if nic.Category == "Private" {
 				utils.InitNicFirewall(nicname, nic.Ip, false, utils.REJECT)
@@ -114,8 +115,8 @@ func configureNic(ctx *server.CommandContext) interface{} {
 				)
 			}
 
-			tree.SetFirewallDefaultAction(nicname, "local", "reject")
-			tree.SetFirewallDefaultAction(nicname, "in", "reject")
+			tree.SetFirewallDefaultAction(nicname, "local", nic.FirewallDefaultAction)
+			tree.SetFirewallDefaultAction(nicname, "in", nic.FirewallDefaultAction)
 
 			tree.AttachFirewallToInterface(nicname, "local")
 			tree.AttachFirewallToInterface(nicname, "in")
@@ -143,6 +144,11 @@ func checkNicIsUp(nicname string, panicIfDown bool) error {
 	err := utils.Retry(func() error {
 		_, o, _, _ := bash.RunWithReturn()
 		if o == "" {
+			// try start nic
+			nicbash := utils.Bash{
+				Command: fmt.Sprintf("sudo ip link set %s up", nicname),
+			}
+			nicbash.Run()
 			return errors.New(fmt.Sprintf("nic %s is down", nicname))
 		} else {
 			return nil
@@ -176,7 +182,7 @@ func removeNic(ctx *server.CommandContext) interface{} {
 			}
 		}, 5, 1)
 		utils.PanicOnError(err)
-		tree.Deletef("interfaces ethernet %s address", nicname)
+		tree.Deletef("interfaces ethernet %s", nicname)
 		if utils.IsSkipVyosIptables() {
 			utils.DestroyNicFirewall(nicname)
 		} else {
